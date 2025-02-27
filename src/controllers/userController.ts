@@ -1,13 +1,14 @@
 import { Request, Response } from "express";
 import {
-  createUser,
+  registerUser,
+  loginUser,
   deleteUser,
   getUserById,
   getUsers,
   updateUser,
 } from "../services/userService";
 
-// Obtener todos los conciertos
+// Obtener todos los usuarios
 export const handleGetUsers = async (req: Request, res: Response) => {
   try {
     const users = await getUsers();
@@ -17,14 +18,12 @@ export const handleGetUsers = async (req: Request, res: Response) => {
   }
 };
 
-// Obtener un concierto por ID
+// Obtener un usuario por ID
 export const handleGetUserById = async (req: Request, res: Response) => {
   try {
     const user = await getUserById(req.params.id);
     if (!user) {
-      res.status(400).json({
-        message: "User not found",
-      });
+      res.status(404).json({ message: "User not found" });
     }
     res.json(user);
   } catch (err: any) {
@@ -32,30 +31,51 @@ export const handleGetUserById = async (req: Request, res: Response) => {
   }
 };
 
-// Crear un nuevo concierto
-export const handleCreateUser = async (req: Request, res: Response) => {
+// Registrar un nuevo usuario
+export const handleRegisterUser = async (req: Request, res: Response) => {
   try {
-    const newUser = createUser(req.body);
-    res.status(201).json(newUser);
+    const { user, token } = await registerUser(req.body);
+    res.status(201).json({ user, token });
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }
 };
 
-// Actualizar un concierto
+// Iniciar sesión
+export const handleLoginUser = async (req: Request, res: Response) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ message: "Email and password are required" });
+    }
+
+    const { user, token } = await loginUser(email, password);
+    res.json({ user, token });
+  } catch (err: any) {
+    res.status(401).json({ message: err.message });
+  }
+};
+
+// Actualizar un usuario
 export const handleUpdateUser = async (req: Request, res: Response) => {
   try {
     const updatedUser = await updateUser(req.params.id, req.body);
+    if (!updatedUser) {
+      res.status(404).json({ message: "User not found" });
+    }
     res.json(updatedUser);
   } catch (err: any) {
     res.status(400).json({ message: err.message });
   }
 };
 
-// Eliminar un concierto
+// Eliminar un usuario
 export const handleDeleteUser = async (req: Request, res: Response) => {
   try {
-    await deleteUser(req.params.id);
+    const deletedUser = await deleteUser(req.params.id);
+    if (!deletedUser) {
+      res.status(404).json({ message: "User not found" });
+    }
     res.json({ message: "User deleted" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
