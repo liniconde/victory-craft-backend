@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 import concertRoutes from "./routes/concertRoutes";
+import userRoutes from "./routes/userRoutes";
 
 dotenv.config();
 
@@ -13,9 +14,6 @@ const port = process.env.PORT || 5001;
 app.use(cors());
 app.use(express.json());
 
-// Rutas de conciertos
-app.use("/api/concerts", concertRoutes);
-
 // Conectar con MongoDB
 mongoose
   .connect(process.env.MONGO_URI as string)
@@ -23,6 +21,7 @@ mongoose
   .catch((err) => console.error(err));
 
 app.use("/concerts", concertRoutes);
+app.use("/users", userRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
