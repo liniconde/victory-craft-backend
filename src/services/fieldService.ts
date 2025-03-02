@@ -1,6 +1,5 @@
-import Field from "../models/Field.js";
-import { getObjectS3SignedUrl } from "./imagesService.js";
-
+import Field from "../models/Field";
+import { getObjectS3SignedUrl } from "./imagesService";
 
 // Crear un nuevo campo
 export const createField = async (fieldData: any) => {
