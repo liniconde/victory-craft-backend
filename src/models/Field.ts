@@ -8,6 +8,8 @@ interface IField extends Document {
   pricePerHour: number;
   imageS3Key: string;
   imageUrl?: string;
+  latitude: string;
+  longitude?: string;
   owner: mongoose.Types.ObjectId; // Referencia a User
   createdAt: Date;
   updatedAt: Date;
@@ -24,7 +26,7 @@ const FieldSchema = new Schema<IField>(
     },
     location: { type: String, required: true },
     pricePerHour: { type: Number, required: true },
-    imageS3Key: { type: String, required: true },
+    imageS3Key: { type: String, required: false },
     imageUrl: { type: String },
     owner: { type: Schema.Types.ObjectId, ref: "User", required: true }, // Relación con User
   },
