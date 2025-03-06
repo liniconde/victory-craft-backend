@@ -2,7 +2,6 @@ import express from "express";
 import {
   handleCreateSlot,
   handleGetSlotById,
-  handleGetAllSlots,
   handleGetSlotsByFieldId,
   handleUpdateSlot,
   handleDeleteSlot,
@@ -11,7 +10,6 @@ import {
 const router = express.Router();
 
 // Definir rutas y conectarlas con el controlador
-router.get("/", handleGetAllSlots);
 router.get("/:id", handleGetSlotById);
 router.get("/field/:id", handleGetSlotsByFieldId);
 router.post("/", handleCreateSlot);

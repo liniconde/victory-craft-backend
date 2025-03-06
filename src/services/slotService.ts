@@ -48,20 +48,6 @@ class SlotService {
   }
 
   /**
-   * Obtiene todos los slots, opcionalmente filtrados por campo (`fieldId`).
-   * @param fieldId - ID del campo para filtrar los slots (opcional).
-   * @returns Lista de slots.
-   */
-  async getAllSlots(fieldId?: string) {
-    try {
-      const query = fieldId ? { field: new Types.ObjectId(fieldId) } : {};
-      return await Slot.find(query).populate("field", "name location");
-    } catch (error: any) {
-      throw new Error(`Error fetching slots: ${error.message}`);
-    }
-  }
-
-  /**
    * Obtiene los slots de un campo específico.
    * @param fieldId - ID del campo.
    * @returns Lista de slots asociados al campo.

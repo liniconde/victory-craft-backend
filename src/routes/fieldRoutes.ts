@@ -6,6 +6,7 @@ import {
   handleUpdateField,
   handleDeleteField,
 } from "../controllers/fieldController";
+import { handleGetFieldSlots } from "../controllers/fieldController";
 
 const router = express.Router();
 
@@ -15,5 +16,6 @@ router.get("/:id", handleGetFieldById);
 router.post("/", handleCreateField);
 router.put("/:id", handleUpdateField);
 router.delete("/:id", handleDeleteField);
+router.get("/:id/slots", handleGetFieldSlots);
 
 export default router;

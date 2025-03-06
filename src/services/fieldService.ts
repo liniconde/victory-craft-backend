@@ -1,5 +1,7 @@
+import { Types } from "mongoose";
 import Field from "../models/Field";
 import { getObjectS3SignedUrl } from "./imagesService";
+import Slot from "../models/Slot";
 
 // Crear un nuevo campo
 export const createField = async (fieldData: any) => {
@@ -59,4 +61,18 @@ const updateImageSignedUrl = (field: any) => {
   if (!field.imageS3Key) return field;
   const imageUrl = getObjectS3SignedUrl(field.imageS3Key);
   return { ...field.toObject(), imageUrl }; // Convertir el documento a objeto y agregar la URL
+};
+
+/**
+ * Obtiene todos los slots, opcionalmente filtrados por campo (`fieldId`).
+ * @param fieldId - ID del campo para filtrar los slots (opcional).
+ * @returns Lista de slots.
+ */
+export const getFieldSlots = async (fieldId?: string) => {
+  try {
+    const query = fieldId ? { field: new Types.ObjectId(fieldId) } : {};
+    return await Slot.find(query).populate("field", "name location");
+  } catch (error: any) {
+    throw new Error(`Error fetching slots: ${error.message}`);
+  }
 };

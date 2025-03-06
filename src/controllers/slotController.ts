@@ -24,24 +24,9 @@ export const handleGetSlotById = async (req: Request, res: Response) => {
   try {
     const slot = await slotService.getSlotById(req.params.id);
     if (!slot) {
-       res.status(404).json({ message: "Slot not found" });
+      res.status(404).json({ message: "Slot not found" });
     }
     res.status(200).json(slot);
-  } catch (error: any) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
-/**
- * Obtiene todos los slots, opcionalmente filtrados por un campo (`fieldId`).
- * @param req - Request de Express con `fieldId` como parámetro de consulta (opcional).
- * @param res - Response de Express.
- */
-export const handleGetAllSlots = async (req: Request, res: Response) => {
-  try {
-    const fieldId = req.query.fieldId as string | undefined;
-    const slots = await slotService.getAllSlots(fieldId);
-    res.status(200).json(slots);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
   }
@@ -71,7 +56,7 @@ export const handleUpdateSlot = async (req: Request, res: Response) => {
   try {
     const updatedSlot = await slotService.updateSlot(req.params.id, req.body);
     if (!updatedSlot) {
-       res.status(404).json({ message: "Slot not found" });
+      res.status(404).json({ message: "Slot not found" });
     }
     res.status(200).json(updatedSlot);
   } catch (error: any) {
@@ -88,7 +73,7 @@ export const handleDeleteSlot = async (req: Request, res: Response) => {
   try {
     const deletedSlot = await slotService.deleteSlot(req.params.id);
     if (!deletedSlot) {
-       res.status(404).json({ message: "Slot not found" });
+      res.status(404).json({ message: "Slot not found" });
     }
     res.status(204).json({ message: "Slot deleted successfully" });
   } catch (error: any) {

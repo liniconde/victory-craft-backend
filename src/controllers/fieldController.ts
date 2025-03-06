@@ -5,6 +5,7 @@ import {
   getAllFields,
   updateField,
   deleteField,
+  getFieldSlots
 } from "../services/fieldService";
 
 // Obtener todos los campos
@@ -63,5 +64,20 @@ export const handleDeleteField = async (req: Request, res: Response) => {
     res.json({ message: "Field deleted successfully" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+/**
+ * Obtiene todos los slots, opcionalmente filtrados por un campo (`fieldId`).
+ * @param req - Request de Express con `fieldId` como parámetro de consulta (opcional).
+ * @param res - Response de Express.
+ */
+export const handleGetFieldSlots = async (req: Request, res: Response) => {
+  try {
+    const fieldId = req.query.fieldId as string | undefined;
+    const slots = await getFieldSlots(fieldId);
+    res.status(200).json(slots);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 };
