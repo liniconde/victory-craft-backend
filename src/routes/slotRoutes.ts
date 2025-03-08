@@ -11,7 +11,7 @@ const router = express.Router();
 
 // Definir rutas y conectarlas con el controlador
 router.get("/:id", handleGetSlotById);
-router.get("/field/:id", handleGetSlotsByFieldId);
+router.get("/:id/field", handleGetSlotsByFieldId);
 router.post("/", handleCreateSlot);
 router.put("/:id", handleUpdateSlot);
 router.delete("/:id", handleDeleteSlot);

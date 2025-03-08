@@ -74,8 +74,7 @@ export const handleDeleteField = async (req: Request, res: Response) => {
  */
 export const handleGetFieldSlots = async (req: Request, res: Response) => {
   try {
-    const fieldId = req.query.fieldId as string | undefined;
-    const slots = await getFieldSlots(fieldId);
+    const slots = await getFieldSlots(req.params.id);
     res.status(200).json(slots);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

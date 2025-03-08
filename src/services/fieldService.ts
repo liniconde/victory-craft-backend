@@ -68,7 +68,7 @@ const updateImageSignedUrl = (field: any) => {
  * @param fieldId - ID del campo para filtrar los slots (opcional).
  * @returns Lista de slots.
  */
-export const getFieldSlots = async (fieldId?: string) => {
+export const getFieldSlots = async (fieldId: string) => {
   try {
     const query = fieldId ? { field: new Types.ObjectId(fieldId) } : {};
     return await Slot.find(query).populate("field", "name location");
