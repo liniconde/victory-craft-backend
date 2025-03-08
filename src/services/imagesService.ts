@@ -1,37 +1,42 @@
 import AWS from "aws-sdk";
+import dotenv from "dotenv";
+dotenv.config();
 
 const s3 = new AWS.S3({
-    signatureVersion: 'v4'
+  signatureVersion: "v4",
+  region: process.env.AWS_REGION,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
 });
-const BUCKET_NAME = 'djfieldsking';
+
+const BUCKET_NAME = process.env.BUCKET_NAME || "victory-craft";
 
 export const getUploadS3SignedUrl = (objectKey: string) => {
-    
-    // Configura las opciones para obtener la URL firmada para subir
-    const url = s3.getSignedUrl('putObject', {
-        Bucket: BUCKET_NAME,
-        Key: objectKey,
-        Expires: 600 // Tiempo en segundos antes de que la URL expire
-    });
+  // Configura las opciones para obtener la URL firmada para subir
+  const url = s3.getSignedUrl("putObject", {
+    Bucket: BUCKET_NAME,
+    Key: objectKey,
+    Expires: 600, // Tiempo en segundos antes de que la URL expire
+  });
 
-    const s3Url = `https://${BUCKET_NAME}.s3.amazonaws.com/${objectKey}`;
+  const s3Url = `https://${BUCKET_NAME}.s3.amazonaws.com/${objectKey}`;
 
-    // Devuelve la URL firmada
-    return  { s3Url, objectKey, url };
+  // Devuelve la URL firmada
+  return { s3Url, objectKey, url };
 };
 
 export const getObjectS3SignedUrl = (objectKey: string) => {
-    
+  console.log("object keyy", objectKey);
+  const signedUrlExpireSeconds = 60 * 5; // URL válida por 5 minutos
 
-    console.log('object keyy',objectKey )
-    const signedUrlExpireSeconds = 60 * 5; // URL válida por 5 minutos
+  // Obtiene la URL firmada
+  const url = s3.getSignedUrl("getObject", {
+    Bucket: BUCKET_NAME,
+    Key: objectKey,
+    Expires: signedUrlExpireSeconds,
+  });
 
-    // Obtiene la URL firmada
-    const url = s3.getSignedUrl('getObject', {
-        Bucket: BUCKET_NAME,
-        Key: objectKey,
-        Expires: signedUrlExpireSeconds
-    });
-
-    return url;
+  return url;
 };
