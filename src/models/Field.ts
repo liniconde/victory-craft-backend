@@ -4,12 +4,14 @@ import mongoose, { Schema, Document } from "mongoose";
 interface IField extends Document {
   name: string;
   type: "football" | "padel" | "tennis";
-  location: string;
+  location?: {
+    name: string;
+    lat?: number;
+    long?: number;
+  };
   pricePerHour: number;
   imageS3Key: string;
   imageUrl?: string;
-  latitude: string;
-  longitude?: string;
   owner: mongoose.Types.ObjectId; // Referencia a User
   createdAt: Date;
   updatedAt: Date;
@@ -24,7 +26,11 @@ const FieldSchema = new Schema<IField>(
       enum: ["football", "padel", "tennis"],
       required: true,
     },
-    location: { type: String, required: true },
+    location: {
+      name: { type: String, required: false },
+      lat: { type: Number, required: false },
+      long: { type: Number, required: false },
+    },
     pricePerHour: { type: Number, required: true },
     imageS3Key: { type: String, required: false },
     imageUrl: { type: String },
