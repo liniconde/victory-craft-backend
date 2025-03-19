@@ -16,7 +16,7 @@ export const getUserById = async (id: string) => {
 
 // Registrar un nuevo usuario
 export const registerUser = async (userData: any) => {
-  const { username, email, password, firstName, lastName } = userData;
+  const { username, email, password, firstName, lastName, role } = userData;
 
   // Verificar si el usuario ya existe
   const existingUser = await User.findOne({ email });
@@ -34,6 +34,7 @@ export const registerUser = async (userData: any) => {
     password: hashedPassword,
     firstName,
     lastName,
+    role,
   });
 
   await newUser.save();
@@ -64,9 +65,13 @@ export const loginUser = async (email: string, password: string) => {
   }
 
   // Generar token JWT
-  const token = jwt.sign({ id: user._id, email: user.email }, SECRET_KEY, {
-    expiresIn: "7d",
-  });
+  const token = jwt.sign(
+    { id: user._id, email: user.email, role: user.role },
+    SECRET_KEY,
+    {
+      expiresIn: "7d",
+    }
+  );
 
   return { user, token };
 };

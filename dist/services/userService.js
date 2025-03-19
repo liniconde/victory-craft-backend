@@ -65,7 +65,7 @@ const loginUser = (email, password) => __awaiter(void 0, void 0, void 0, functio
         throw new Error("Invalid credentials");
     }
     // Generar token JWT
-    const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email }, SECRET_KEY, {
+    const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email, role: user.role }, SECRET_KEY, {
         expiresIn: "7d",
     });
     return { user, token };

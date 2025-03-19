@@ -42,7 +42,11 @@ const FieldSchema = new mongoose_1.Schema({
         enum: ["football", "padel", "tennis"],
         required: true,
     },
-    location: { type: String, required: true },
+    location: {
+        name: { type: String, required: false },
+        lat: { type: Number, required: false },
+        long: { type: Number, required: false },
+    },
     pricePerHour: { type: Number, required: true },
     imageS3Key: { type: String, required: false },
     imageUrl: { type: String },
