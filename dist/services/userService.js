@@ -29,7 +29,7 @@ const getUserById = (id) => __awaiter(void 0, void 0, void 0, function* () {
 exports.getUserById = getUserById;
 // Registrar un nuevo usuario
 const registerUser = (userData) => __awaiter(void 0, void 0, void 0, function* () {
-    const { username, email, password, firstName, lastName } = userData;
+    const { username, email, password, firstName, lastName, role } = userData;
     // Verificar si el usuario ya existe
     const existingUser = yield User_1.default.findOne({ email });
     if (existingUser) {
@@ -44,6 +44,7 @@ const registerUser = (userData) => __awaiter(void 0, void 0, void 0, function* (
         password: hashedPassword,
         firstName,
         lastName,
+        role,
     });
     yield newUser.save();
     // Generar token JWT
