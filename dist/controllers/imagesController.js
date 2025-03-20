@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleGetImage = exports.handleUploadImage = void 0;
-const imagesService_1 = require("../services/imagesService");
+const s3FilesService_1 = require("../services/s3FilesService");
 /**
  * Genera una URL firmada para subir una imagen a S3.
  * @param req - Request de Express con el `objectKey` en el body.
@@ -22,7 +22,7 @@ const handleUploadImage = (req, res) => __awaiter(void 0, void 0, void 0, functi
         if (!objectKey) {
             res.status(400).json({ message: "objectKey is required" });
         }
-        const { url, s3Url } = yield (0, imagesService_1.getUploadS3SignedUrl)(objectKey);
+        const { url, s3Url } = yield (0, s3FilesService_1.getUploadS3SignedUrl)(objectKey);
         res.status(200).json({ uploadUrl: url, s3Url, objectKey });
     }
     catch (error) {
@@ -42,7 +42,7 @@ const handleGetImage = (req, res) => __awaiter(void 0, void 0, void 0, function*
         if (!objectKey) {
             res.status(400).json({ message: "objectKey is required" });
         }
-        const url = yield (0, imagesService_1.getObjectS3SignedUrl)(objectKey);
+        const url = yield (0, s3FilesService_1.getObjectS3SignedUrl)(objectKey);
         res.status(200).json({ downloadUrl: url, objectKey });
     }
     catch (error) {

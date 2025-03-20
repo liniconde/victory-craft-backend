@@ -1,7 +1,38 @@
 import { Types } from "mongoose";
 import Field from "../models/Field";
-import { getObjectS3SignedUrl } from "./imagesService";
+import { getObjectS3SignedUrl } from "./s3FilesService";
 import Slot from "../models/Slot";
+import Video from "../models/Video";
+
+/**
+ * Obtiene todos los videos de una cancha y les agrega la URL firmada.
+ * @param fieldId - ID de la cancha.
+ * @returns Lista de videos con URLs firmadas.
+ */
+export const getFieldVideos = async (fieldId: string) => {
+  try {
+    const videos = await Video.find({ fieldId }); // Busca los videos de la cancha
+
+    if (!videos.length) {
+      return [];
+    }
+
+    // Generar URLs firmadas para cada video
+    const videosWithUrls = await Promise.all(
+      videos.map(async (video) => ({
+        _id: video._id,
+        fieldId: video.fieldId,
+        s3Key: video.s3Key,
+        uploadedAt: video.uploadedAt,
+        videoUrl: getObjectS3SignedUrl(video.s3Key), // URL firmada de S3
+      }))
+    );
+
+    return videosWithUrls;
+  } catch (error: any) {
+    throw new Error(`Error fetching field videos: ${error.message}`);
+  }
+};
 
 // Crear un nuevo campo
 export const createField = async (fieldData: any) => {

@@ -8,6 +8,7 @@ import fieldRoutes from "./routes/fieldRoutes";
 import slotRoutes from "./routes/slotRoutes";
 import imageRoutes from "./routes/imageRoutes";
 import reservationRoutes from "./routes/reservationRoutes";
+import videoRoutes from "./routes/videoRoutes";
 
 dotenv.config();
 
@@ -30,6 +31,7 @@ app.use("/users", userRoutes);
 app.use("/fields", fieldRoutes);
 app.use("/slots", slotRoutes);
 app.use("/reservations", reservationRoutes);
+app.use("/videos", videoRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);

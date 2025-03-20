@@ -5,6 +5,7 @@ import {
   handleCreateField,
   handleUpdateField,
   handleDeleteField,
+  handleGetFieldVideos,
 } from "../controllers/fieldController";
 import { handleGetFieldSlots } from "../controllers/fieldController";
 
@@ -17,5 +18,6 @@ router.post("/", handleCreateField);
 router.put("/:id", handleUpdateField);
 router.delete("/:id", handleDeleteField);
 router.get("/:id/slots", handleGetFieldSlots);
+router.get("/:id/videos", handleGetFieldVideos); 
 
 export default router;

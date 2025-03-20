@@ -14,5 +14,6 @@ router.post("/", fieldController_1.handleCreateField);
 router.put("/:id", fieldController_1.handleUpdateField);
 router.delete("/:id", fieldController_1.handleDeleteField);
 router.get("/:id/slots", fieldController_2.handleGetFieldSlots);
+router.get("/:id/videos", fieldController_1.handleGetFieldVideos);
 exports.default = router;
 //# sourceMappingURL=fieldRoutes.js.map

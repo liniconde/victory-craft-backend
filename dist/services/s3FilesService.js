@@ -40,4 +40,4 @@ const getObjectS3SignedUrl = (objectKey) => {
     return url;
 };
 exports.getObjectS3SignedUrl = getObjectS3SignedUrl;
-//# sourceMappingURL=imagesService.js.map
+//# sourceMappingURL=s3FilesService.js.map

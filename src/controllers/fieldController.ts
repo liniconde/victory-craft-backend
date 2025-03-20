@@ -5,8 +5,22 @@ import {
   getAllFields,
   updateField,
   deleteField,
-  getFieldSlots
+  getFieldSlots,
+  getFieldVideos
 } from "../services/fieldService";
+
+
+// Obtener todos los videos de una cancha
+export const handleGetFieldVideos = async (req: Request, res: Response) => {
+  try {
+    const { id: fieldId } = req.params;
+    const videos = await getFieldVideos(fieldId);
+
+    res.status(200).json(videos);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+};
 
 // Obtener todos los campos
 export const handleGetFields = async (req: Request, res: Response) => {

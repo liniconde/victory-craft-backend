@@ -12,11 +12,40 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFieldSlots = exports.getAllFields = exports.deleteField = exports.updateField = exports.getFieldById = exports.createField = void 0;
+exports.getFieldSlots = exports.getAllFields = exports.deleteField = exports.updateField = exports.getFieldById = exports.createField = exports.getFieldVideos = void 0;
 const mongoose_1 = require("mongoose");
 const Field_1 = __importDefault(require("../models/Field"));
-const imagesService_1 = require("./imagesService");
+const s3FilesService_1 = require("./s3FilesService");
 const Slot_1 = __importDefault(require("../models/Slot"));
+const Video_1 = __importDefault(require("../models/Video"));
+/**
+ * Obtiene todos los videos de una cancha y les agrega la URL firmada.
+ * @param fieldId - ID de la cancha.
+ * @returns Lista de videos con URLs firmadas.
+ */
+const getFieldVideos = (fieldId) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const videos = yield Video_1.default.find({ fieldId }); // Busca los videos de la cancha
+        if (!videos.length) {
+            return [];
+        }
+        // Generar URLs firmadas para cada video
+        const videosWithUrls = yield Promise.all(videos.map((video) => __awaiter(void 0, void 0, void 0, function* () {
+            return ({
+                _id: video._id,
+                fieldId: video.fieldId,
+                s3Key: video.s3Key,
+                uploadedAt: video.uploadedAt,
+                videoUrl: (0, s3FilesService_1.getObjectS3SignedUrl)(video.s3Key), // URL firmada de S3
+            });
+        })));
+        return videosWithUrls;
+    }
+    catch (error) {
+        throw new Error(`Error fetching field videos: ${error.message}`);
+    }
+});
+exports.getFieldVideos = getFieldVideos;
 // Crear un nuevo campo
 const createField = (fieldData) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -82,7 +111,7 @@ exports.getAllFields = getAllFields;
 const updateImageSignedUrl = (field) => {
     if (!field.imageS3Key)
         return field;
-    const imageUrl = (0, imagesService_1.getObjectS3SignedUrl)(field.imageS3Key);
+    const imageUrl = (0, s3FilesService_1.getObjectS3SignedUrl)(field.imageS3Key);
     return Object.assign(Object.assign({}, field.toObject()), { imageUrl }); // Convertir el documento a objeto y agregar la URL
 };
 /**

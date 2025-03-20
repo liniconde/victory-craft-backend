@@ -9,8 +9,20 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleGetFieldSlots = exports.handleDeleteField = exports.handleUpdateField = exports.handleCreateField = exports.handleGetFieldById = exports.handleGetFields = void 0;
+exports.handleGetFieldSlots = exports.handleDeleteField = exports.handleUpdateField = exports.handleCreateField = exports.handleGetFieldById = exports.handleGetFields = exports.handleGetFieldVideos = void 0;
 const fieldService_1 = require("../services/fieldService");
+// Obtener todos los videos de una cancha
+const handleGetFieldVideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id: fieldId } = req.params;
+        const videos = yield (0, fieldService_1.getFieldVideos)(fieldId);
+        res.status(200).json(videos);
+    }
+    catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+exports.handleGetFieldVideos = handleGetFieldVideos;
 // Obtener todos los campos
 const handleGetFields = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {

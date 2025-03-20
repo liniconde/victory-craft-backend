@@ -13,6 +13,7 @@ const fieldRoutes_1 = __importDefault(require("./routes/fieldRoutes"));
 const slotRoutes_1 = __importDefault(require("./routes/slotRoutes"));
 const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
 const reservationRoutes_1 = __importDefault(require("./routes/reservationRoutes"));
+const videoRoutes_1 = __importDefault(require("./routes/videoRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
@@ -30,6 +31,7 @@ app.use("/users", userRoutes_1.default);
 app.use("/fields", fieldRoutes_1.default);
 app.use("/slots", slotRoutes_1.default);
 app.use("/reservations", reservationRoutes_1.default);
+app.use("/videos", videoRoutes_1.default);
 app.listen(port, () => {
     console.log(`🚀 Server running on http://localhost:${port}`);
 });

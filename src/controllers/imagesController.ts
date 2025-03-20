@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import {
   getUploadS3SignedUrl,
   getObjectS3SignedUrl,
-} from "../services/imagesService";
+} from "../services/s3FilesService";
 
 /**
  * Genera una URL firmada para subir una imagen a S3.
