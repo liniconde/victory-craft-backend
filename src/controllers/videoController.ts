@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createVideo } from "../services/videoService";
+import { createVideo, updateVideo } from "../services/videoService";
 import { getUploadS3SignedUrl } from "../services/s3FilesService";
 
 /**
@@ -18,6 +18,19 @@ export const handleCreateVideo = async (req: Request, res: Response) => {
     res.status(201).json(video);
   } catch (error: any) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Actualizar un video
+export const handleUpdateVideo = async (req: Request, res: Response) => {
+  try {
+    const updatedVideo = await updateVideo(req.params.id, req.body);
+    if (!updatedVideo) {
+      res.status(404).json({ message: "Video not found" });
+    }
+    res.json(updatedVideo);
+  } catch (err: any) {
+    res.status(400).json({ message: err.message });
   }
 };
 

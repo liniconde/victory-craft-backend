@@ -15,6 +15,16 @@ export const createVideo = async (videoData: any) => {
   }
 };
 
+export const updateVideo = async (id: string, updateData: any) => {
+  try {
+    const video = await Video.findByIdAndUpdate(id, updateData, { new: true });
+    if (!video) throw new Error("Video not found");
+    return updateVideoSignedUrl(video);
+  } catch (error) {
+    throw new Error(`Error updating video: ${error.message}`);
+  }
+};
+
 /**
  * Agrega la URL firmada de S3 a un video antes de retornarlo.
  * @param video - Documento del video en la base de datos.
