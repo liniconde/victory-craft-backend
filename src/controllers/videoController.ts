@@ -41,12 +41,13 @@ export const handleUpdateVideo = async (req: Request, res: Response) => {
  */
 export const handleUploadVideo = async (req: Request, res: Response) => {
   try {
+    console.log("entro acca", req.body);
     const { objectKey } = req.body;
     if (!objectKey) {
       res.status(400).json({ message: "objectKey is required" });
     }
 
-    const { url, s3Url } = await getUploadS3SignedUrl(objectKey);
+    const { url, s3Url } = getUploadS3SignedUrl(objectKey);
     res.status(200).json({ uploadUrl: url, s3Url, objectKey });
   } catch (error: any) {
     console.error(error);
