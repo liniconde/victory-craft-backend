@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createVideo = void 0;
+exports.updateVideo = exports.createVideo = void 0;
 const Video_1 = __importDefault(require("../models/Video"));
 const s3FilesService_1 = require("./s3FilesService");
 /**
@@ -30,6 +30,18 @@ const createVideo = (videoData) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.createVideo = createVideo;
+const updateVideo = (id, updateData) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const video = yield Video_1.default.findByIdAndUpdate(id, updateData, { new: true });
+        if (!video)
+            throw new Error("Video not found");
+        return updateVideoSignedUrl(video);
+    }
+    catch (error) {
+        throw new Error(`Error updating video: ${error.message}`);
+    }
+});
+exports.updateVideo = updateVideo;
 /**
  * Agrega la URL firmada de S3 a un video antes de retornarlo.
  * @param video - Documento del video en la base de datos.

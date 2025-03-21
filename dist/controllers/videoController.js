@@ -9,8 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleCreateVideo = void 0;
+exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleCreateVideo = void 0;
 const videoService_1 = require("../services/videoService");
+const s3FilesService_1 = require("../services/s3FilesService");
 /**
  * 📌 Crea un nuevo video asociado a una cancha y opcionalmente a un partido.
  * Recibe `fieldId`, `matchId` (opcional) y `s3Key` desde el cuerpo de la solicitud.
@@ -29,4 +30,39 @@ const handleCreateVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.handleCreateVideo = handleCreateVideo;
+// Actualizar un video
+const handleUpdateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const updatedVideo = yield (0, videoService_1.updateVideo)(req.params.id, req.body);
+        if (!updatedVideo) {
+            res.status(404).json({ message: "Video not found" });
+        }
+        res.json(updatedVideo);
+    }
+    catch (err) {
+        res.status(400).json({ message: err.message });
+    }
+});
+exports.handleUpdateVideo = handleUpdateVideo;
+/**
+ * Genera una URL firmada para subir una imagen a S3.
+ * @param req - Request de Express con el `objectKey` en el body.
+ * @param res - Response de Express.
+ */
+const handleUploadVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        console.log("entro acca", req.body);
+        const { objectKey } = req.body;
+        if (!objectKey) {
+            res.status(400).json({ message: "objectKey is required" });
+        }
+        const { url, s3Url } = (0, s3FilesService_1.getUploadS3SignedUrl)(objectKey);
+        res.status(200).json({ uploadUrl: url, s3Url, objectKey });
+    }
+    catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Error generating upload URL" });
+    }
+});
+exports.handleUploadVideo = handleUploadVideo;
 //# sourceMappingURL=videoController.js.map

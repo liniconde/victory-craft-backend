@@ -8,5 +8,7 @@ const videoController_1 = require("../controllers/videoController");
 const router = express_1.default.Router();
 // 📌 Endpoint para crear un nuevo video
 router.post("/", videoController_1.handleCreateVideo);
+router.put("/:id", videoController_1.handleUpdateVideo);
+router.post("/upload", videoController_1.handleUploadVideo);
 exports.default = router;
 //# sourceMappingURL=videoRoutes.js.map
