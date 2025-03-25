@@ -5,13 +5,13 @@ import Slot from "../models/Slot";
 import Video from "../models/Video";
 
 /**
- * Obtiene todos los videos de una cancha y les agrega la URL firmada.
- * @param fieldId - ID de la cancha.
+ * Obtiene todos los videos de una campo y les agrega la URL firmada.
+ * @param fieldId - ID de la campo.
  * @returns Lista de videos con URLs firmadas.
  */
 export const getFieldVideos = async (fieldId: string) => {
   try {
-    const videos = await Video.find({ fieldId }); // Busca los videos de la cancha
+    const videos = await Video.find({ fieldId }); // Busca los videos de la campo
 
     if (!videos.length) {
       return [];
@@ -50,6 +50,17 @@ export const getFieldById = async (id: string) => {
     const field = await Field.findById(id);
     if (!field) throw new Error("Field not found");
     return updateImageSignedUrl(field);
+  } catch (error) {
+    throw new Error(`Error fetching field: ${error.message}`);
+  }
+};
+
+// Obtener un campo por ID
+export const getFieldsByUserId = async (userId: string) => {
+  try {
+    const query = userId ? { owner: new Types.ObjectId(userId) } : {};
+    const fields = await Field.find(query);
+    return fields.map(updateImageSignedUrl);
   } catch (error) {
     throw new Error(`Error fetching field: ${error.message}`);
   }

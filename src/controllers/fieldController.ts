@@ -6,11 +6,11 @@ import {
   updateField,
   deleteField,
   getFieldSlots,
-  getFieldVideos
+  getFieldVideos,
+  getFieldsByUserId,
 } from "../services/fieldService";
 
-
-// Obtener todos los videos de una cancha
+// Obtener todos los videos de una campo
 export const handleGetFieldVideos = async (req: Request, res: Response) => {
   try {
     const { id: fieldId } = req.params;
@@ -45,6 +45,19 @@ export const handleGetFieldById = async (req: Request, res: Response) => {
   }
 };
 
+// Obtener un campo por ID
+export const handleGetFieldsByUserId = async (req: Request, res: Response) => {
+  try {
+    const fields = await getFieldsByUserId(req.params.userId);
+    if (!fields) {
+      res.status(404).json({ message: "Fields not found" });
+    }
+    res.json(fields);
+  } catch (err: any) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Crear un nuevo campo
 export const handleCreateField = async (req: Request, res: Response) => {
   try {
@@ -60,7 +73,7 @@ export const handleUpdateField = async (req: Request, res: Response) => {
   try {
     const updatedField = await updateField(req.params.id, req.body);
     if (!updatedField) {
-       res.status(404).json({ message: "Field not found" });
+      res.status(404).json({ message: "Field not found" });
     }
     res.json(updatedField);
   } catch (err: any) {
@@ -73,7 +86,7 @@ export const handleDeleteField = async (req: Request, res: Response) => {
   try {
     const deletedField = await deleteField(req.params.id);
     if (!deletedField) {
-       res.status(404).json({ message: "Field not found" });
+      res.status(404).json({ message: "Field not found" });
     }
     res.json({ message: "Field deleted successfully" });
   } catch (err: any) {

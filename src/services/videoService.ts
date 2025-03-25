@@ -2,7 +2,7 @@ import Video from "../models/Video";
 import { getUploadS3SignedUrl } from "./s3FilesService";
 
 /**
- * Crea un nuevo video asociado a una cancha y opcionalmente a un partido.
+ * Crea un nuevo video asociado a una campo y opcionalmente a un partido.
  * @param videoData - Datos del video (fieldId, matchId, s3Key).
  * @returns Video con URL firmada.
  */

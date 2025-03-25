@@ -1,6 +1,6 @@
-## 🏟️ **Backend - Reserva de Canchas Deportivas** 🏃⚽
+## 🏟️ **Backend - Reserva de Campos Deportivas** 🏃⚽
 
-📍 **API para gestionar canchas deportivas, reservas y usuarios.**Este backend proporciona un servicio RESTful para administrar los datos de las canchas, reservas y usuarios.
+📍 **API para gestionar campos deportivas, reservas y usuarios.**Este backend proporciona un servicio RESTful para administrar los datos de las campos, reservas y usuarios.
 
 ---
 

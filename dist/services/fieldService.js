@@ -12,20 +12,20 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getFieldSlots = exports.getAllFields = exports.deleteField = exports.updateField = exports.getFieldById = exports.createField = exports.getFieldVideos = void 0;
+exports.getFieldSlots = exports.getAllFields = exports.deleteField = exports.updateField = exports.getFieldsByUserId = exports.getFieldById = exports.createField = exports.getFieldVideos = void 0;
 const mongoose_1 = require("mongoose");
 const Field_1 = __importDefault(require("../models/Field"));
 const s3FilesService_1 = require("./s3FilesService");
 const Slot_1 = __importDefault(require("../models/Slot"));
 const Video_1 = __importDefault(require("../models/Video"));
 /**
- * Obtiene todos los videos de una cancha y les agrega la URL firmada.
- * @param fieldId - ID de la cancha.
+ * Obtiene todos los videos de una campo y les agrega la URL firmada.
+ * @param fieldId - ID de la campo.
  * @returns Lista de videos con URLs firmadas.
  */
 const getFieldVideos = (fieldId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const videos = yield Video_1.default.find({ fieldId }); // Busca los videos de la cancha
+        const videos = yield Video_1.default.find({ fieldId }); // Busca los videos de la campo
         if (!videos.length) {
             return [];
         }
@@ -70,6 +70,18 @@ const getFieldById = (id) => __awaiter(void 0, void 0, void 0, function* () {
     }
 });
 exports.getFieldById = getFieldById;
+// Obtener un campo por ID
+const getFieldsByUserId = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const query = userId ? { owner: new mongoose_1.Types.ObjectId(userId) } : {};
+        const fields = yield Field_1.default.find(query);
+        return fields.map(updateImageSignedUrl);
+    }
+    catch (error) {
+        throw new Error(`Error fetching field: ${error.message}`);
+    }
+});
+exports.getFieldsByUserId = getFieldsByUserId;
 // Actualizar un campo por ID
 const updateField = (id, updateData) => __awaiter(void 0, void 0, void 0, function* () {
     try {

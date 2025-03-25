@@ -9,9 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleGetFieldSlots = exports.handleDeleteField = exports.handleUpdateField = exports.handleCreateField = exports.handleGetFieldById = exports.handleGetFields = exports.handleGetFieldVideos = void 0;
+exports.handleGetFieldSlots = exports.handleDeleteField = exports.handleUpdateField = exports.handleCreateField = exports.handleGetFieldsByUserId = exports.handleGetFieldById = exports.handleGetFields = exports.handleGetFieldVideos = void 0;
 const fieldService_1 = require("../services/fieldService");
-// Obtener todos los videos de una cancha
+// Obtener todos los videos de una campo
 const handleGetFieldVideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id: fieldId } = req.params;
@@ -48,6 +48,20 @@ const handleGetFieldById = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.handleGetFieldById = handleGetFieldById;
+// Obtener un campo por ID
+const handleGetFieldsByUserId = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const fields = yield (0, fieldService_1.getFieldsByUserId)(req.params.userId);
+        if (!fields) {
+            res.status(404).json({ message: "Fields not found" });
+        }
+        res.json(fields);
+    }
+    catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+});
+exports.handleGetFieldsByUserId = handleGetFieldsByUserId;
 // Crear un nuevo campo
 const handleCreateField = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {

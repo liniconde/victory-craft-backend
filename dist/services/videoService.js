@@ -16,7 +16,7 @@ exports.updateVideo = exports.createVideo = void 0;
 const Video_1 = __importDefault(require("../models/Video"));
 const s3FilesService_1 = require("./s3FilesService");
 /**
- * Crea un nuevo video asociado a una cancha y opcionalmente a un partido.
+ * Crea un nuevo video asociado a una campo y opcionalmente a un partido.
  * @param videoData - Datos del video (fieldId, matchId, s3Key).
  * @returns Video con URL firmada.
  */

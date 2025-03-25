@@ -3,7 +3,7 @@ import { createVideo, updateVideo } from "../services/videoService";
 import { getUploadS3SignedUrl } from "../services/s3FilesService";
 
 /**
- * 📌 Crea un nuevo video asociado a una cancha y opcionalmente a un partido.
+ * 📌 Crea un nuevo video asociado a una campo y opcionalmente a un partido.
  * Recibe `fieldId`, `matchId` (opcional) y `s3Key` desde el cuerpo de la solicitud.
  */
 export const handleCreateVideo = async (req: Request, res: Response) => {

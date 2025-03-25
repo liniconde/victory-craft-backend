@@ -13,7 +13,7 @@ exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleCreateVide
 const videoService_1 = require("../services/videoService");
 const s3FilesService_1 = require("../services/s3FilesService");
 /**
- * 📌 Crea un nuevo video asociado a una cancha y opcionalmente a un partido.
+ * 📌 Crea un nuevo video asociado a una campo y opcionalmente a un partido.
  * Recibe `fieldId`, `matchId` (opcional) y `s3Key` desde el cuerpo de la solicitud.
  */
 const handleCreateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {

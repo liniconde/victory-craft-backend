@@ -10,6 +10,7 @@ const router = express_1.default.Router();
 // Definir rutas y conectarlas con el controlador
 router.get("/", fieldController_1.handleGetFields);
 router.get("/:id", fieldController_1.handleGetFieldById);
+router.get("/users/:userId", fieldController_1.handleGetFieldsByUserId);
 router.post("/", fieldController_1.handleCreateField);
 router.put("/:id", fieldController_1.handleUpdateField);
 router.delete("/:id", fieldController_1.handleDeleteField);
