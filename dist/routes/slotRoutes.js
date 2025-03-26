@@ -10,6 +10,7 @@ const router = express_1.default.Router();
 router.get("/:id", slotController_1.handleGetSlotById);
 router.get("/:id/field", slotController_1.handleGetSlotsByFieldId);
 router.post("/", slotController_1.handleCreateSlot);
+router.get("/", slotController_1.handleGetSlots);
 router.put("/:id", slotController_1.handleUpdateSlot);
 router.delete("/:id", slotController_1.handleDeleteSlot);
 exports.default = router;

@@ -134,7 +134,7 @@ const updateImageSignedUrl = (field) => {
 const getFieldSlots = (fieldId) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const query = fieldId ? { field: new mongoose_1.Types.ObjectId(fieldId) } : {};
-        const slots = yield Slot_1.default.find(query).populate("field", "name location imageS3Key");
+        const slots = yield Slot_1.default.find(query).populate("field");
         const slotsPopulated = slots.map(updateImageSignedUrl);
         return slotsPopulated;
     }

@@ -66,6 +66,21 @@ class SlotService {
         });
     }
     /**
+     * Obtiene los slots de un campo específico.
+     * @param fieldId - ID del campo.
+     * @returns Lista de slots asociados al campo.
+     */
+    getSlots() {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                return yield Slot_1.default.find().populate("field", "name location");
+            }
+            catch (error) {
+                throw new Error(`Error fetching slots for field: ${error.message}`);
+            }
+        });
+    }
+    /**
      * Actualiza un slot por su ID.
      * @param slotId - ID del slot a actualizar.
      * @param slotData - Datos a actualizar.

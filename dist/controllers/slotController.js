@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleDeleteSlot = exports.handleUpdateSlot = exports.handleGetSlotsByFieldId = exports.handleGetSlotById = exports.handleCreateSlot = void 0;
+exports.handleDeleteSlot = exports.handleUpdateSlot = exports.handleGetSlotsByFieldId = exports.handleGetSlots = exports.handleGetSlotById = exports.handleCreateSlot = void 0;
 const slotService_1 = __importDefault(require("../services/slotService"));
 /**
  * Crea un nuevo slot.
@@ -47,6 +47,24 @@ const handleGetSlotById = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.handleGetSlotById = handleGetSlotById;
+/**
+ * Obtiene un slot por su ID.
+ * @param req - Request de Express con el ID del slot en los parámetros.
+ * @param res - Response de Express.
+ */
+const handleGetSlots = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const slot = yield slotService_1.default.getSlots();
+        if (!slot) {
+            res.status(404).json({ message: "Slots not found" });
+        }
+        res.status(200).json(slot);
+    }
+    catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+exports.handleGetSlots = handleGetSlots;
 /**
  * Obtiene todos los slots asociados a un campo específico.
  * @param req - Request de Express con el `fieldId` en los parámetros.
