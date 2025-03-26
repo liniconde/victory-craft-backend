@@ -5,6 +5,7 @@ import {
   handleGetSlotsByFieldId,
   handleUpdateSlot,
   handleDeleteSlot,
+  handleGetSlots
 } from "../controllers/slotController";
 
 const router = express.Router();
@@ -13,6 +14,7 @@ const router = express.Router();
 router.get("/:id", handleGetSlotById);
 router.get("/:id/field", handleGetSlotsByFieldId);
 router.post("/", handleCreateSlot);
+router.get("/", handleGetSlots);
 router.put("/:id", handleUpdateSlot);
 router.delete("/:id", handleDeleteSlot);
 

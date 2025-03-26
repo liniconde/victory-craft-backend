@@ -33,6 +33,23 @@ export const handleGetSlotById = async (req: Request, res: Response) => {
 };
 
 /**
+ * Obtiene un slot por su ID.
+ * @param req - Request de Express con el ID del slot en los parámetros.
+ * @param res - Response de Express.
+ */
+export const handleGetSlots = async (req: Request, res: Response) => {
+  try {
+    const slot = await slotService.getSlots();
+    if (!slot) {
+      res.status(404).json({ message: "Slots not found" });
+    }
+    res.status(200).json(slot);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/**
  * Obtiene todos los slots asociados a un campo específico.
  * @param req - Request de Express con el `fieldId` en los parámetros.
  * @param res - Response de Express.
