@@ -83,8 +83,8 @@ const updateReservation = (id, updateData) => __awaiter(void 0, void 0, void 0, 
 exports.updateReservation = updateReservation;
 /**
  * Elimina una reserva por ID.
- * @param id - ID de la reserva a eliminar.
- * @returns Mensaje de éxito si se elimina correctamente.
+ * @param id
+ * @returns
  */
 const deleteReservation = (id) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -100,16 +100,18 @@ const deleteReservation = (id) => __awaiter(void 0, void 0, void 0, function* ()
 exports.deleteReservation = deleteReservation;
 /**
  * Obtiene todas las reservas.
- * @returns Lista de reservas.
+ * @returns
  */
 const getAllReservations = () => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        return yield Reservation_1.default.find()
+        const reservations = yield Reservation_1.default.find()
             .populate("user", "username email")
             .populate({
             path: "slot",
-            populate: { path: "field", select: "name location type" },
+            populate: { path: "field" },
         });
+        console.log("reservations", reservations);
+        return reservations;
     }
     catch (error) {
         throw new Error(`Error fetching reservations: ${error.message}`);

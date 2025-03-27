@@ -77,8 +77,8 @@ export const updateReservation = async (
 
 /**
  * Elimina una reserva por ID.
- * @param id - ID de la reserva a eliminar.
- * @returns Mensaje de éxito si se elimina correctamente.
+ * @param id
+ * @returns
  */
 export const deleteReservation = async (id: string) => {
   try {
@@ -92,16 +92,18 @@ export const deleteReservation = async (id: string) => {
 
 /**
  * Obtiene todas las reservas.
- * @returns Lista de reservas.
+ * @returns
  */
 export const getAllReservations = async () => {
   try {
-    return await Reservation.find()
+    const reservations = await Reservation.find()
       .populate("user", "username email")
       .populate({
         path: "slot",
-        populate: { path: "field", select: "name location type" },
+        populate: { path: "field" },
       });
+    console.log("reservations", reservations);
+    return reservations;
   } catch (error: any) {
     throw new Error(`Error fetching reservations: ${error.message}`);
   }
