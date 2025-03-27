@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 // Interfaz para TypeScript
 interface IVideo extends Document {
   fieldId: mongoose.Types.ObjectId; // Referencia a Field
+  slotId: mongoose.Types.ObjectId;
   s3Key: string; // Identificador en S3
   s3Url?: string; // URL pública o firmada de S3
   uploadedAt: Date;
@@ -12,6 +13,7 @@ interface IVideo extends Document {
 const VideoSchema = new Schema<IVideo>(
   {
     fieldId: { type: Schema.Types.ObjectId, ref: "Field", required: true },
+    slotId: { type: Schema.Types.ObjectId, ref: "Slot", required: true },
     s3Key: { type: String, required: true },
     s3Url: { type: String },
   },

@@ -8,10 +8,10 @@ import { getUploadS3SignedUrl } from "../services/s3FilesService";
  */
 export const handleCreateVideo = async (req: Request, res: Response) => {
   try {
-    const { fieldId, matchId, s3Key } = req.body;
+    const { fieldId, matchId, s3Key, slotId } = req.body;
 
-    if (!fieldId || !s3Key) {
-      res.status(400).json({ error: "Field ID and S3 key are required" });
+    if (!fieldId || !s3Key || !slotId) {
+      res.status(400).json({ error: "Field ID and S3 key and SlotId are required" });
     }
 
     const video = await createVideo({ fieldId, matchId, s3Key });

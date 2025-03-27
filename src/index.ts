@@ -32,6 +32,7 @@ app.use("/fields", fieldRoutes);
 app.use("/slots", slotRoutes);
 app.use("/reservations", reservationRoutes);
 app.use("/videos", videoRoutes);
+app.use("/videoStats", videoRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
