@@ -18,14 +18,18 @@ const s3FilesService_1 = require("../services/s3FilesService");
  */
 const handleCreateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { fieldId, matchId, s3Key } = req.body;
-        if (!fieldId || !s3Key) {
-            res.status(400).json({ error: "Field ID and S3 key are required" });
+        const { fieldId, matchId, s3Key, slotId } = req.body;
+        console.log(req.body);
+        if (!fieldId || !s3Key || !slotId) {
+            res
+                .status(400)
+                .json({ error: "Field ID and S3 key and SlotId are required" });
         }
         const video = yield (0, videoService_1.createVideo)({ fieldId, matchId, s3Key });
         res.status(201).json(video);
     }
     catch (error) {
+        console.error("error", error);
         res.status(500).json({ message: error.message });
     }
 });

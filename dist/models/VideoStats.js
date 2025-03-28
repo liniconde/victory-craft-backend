@@ -34,13 +34,36 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
-// Esquema de Mongoose
-const VideoSchema = new mongoose_1.Schema({
-    fieldId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Field", required: true },
-    slotId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Slot", required: true },
-    s3Key: { type: String, required: true },
-    s3Url: { type: String },
-}, { timestamps: { createdAt: "uploadedAt" } } // Define `uploadedAt` automáticamente
-);
-exports.default = mongoose_1.default.model("Video", VideoSchema);
-//# sourceMappingURL=Video.js.map
+const VideoStatsSchema = new mongoose_1.Schema({
+    videoId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Video",
+        required: true,
+        unique: true,
+    },
+    sportType: {
+        type: String,
+        enum: ["football", "padel", "tennis"],
+        required: true,
+    },
+    teams: [
+        {
+            teamName: { type: String, required: true },
+            stats: { type: Map, of: Number, default: {} },
+        },
+    ],
+    generatedByModel: {
+        type: String,
+        enum: [
+            "manual",
+            "OpenPose",
+            "YOLOv8",
+            "DeepSportAnalyzer",
+            "BallTrackNet",
+        ],
+        required: true,
+        default: "manual",
+    },
+}, { timestamps: true });
+exports.default = mongoose_1.default.model("VideoStats", VideoStatsSchema);
+//# sourceMappingURL=VideoStats.js.map
