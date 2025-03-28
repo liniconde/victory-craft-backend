@@ -10,13 +10,18 @@ export const handleCreateVideo = async (req: Request, res: Response) => {
   try {
     const { fieldId, matchId, s3Key, slotId } = req.body;
 
+    console.log(req.body);
+
     if (!fieldId || !s3Key || !slotId) {
-      res.status(400).json({ error: "Field ID and S3 key and SlotId are required" });
+      res
+        .status(400)
+        .json({ error: "Field ID and S3 key and SlotId are required" });
     }
 
     const video = await createVideo({ fieldId, matchId, s3Key });
     res.status(201).json(video);
   } catch (error: any) {
+    console.error("error", error);
     res.status(500).json({ message: error.message });
   }
 };

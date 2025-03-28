@@ -9,6 +9,7 @@ import slotRoutes from "./routes/slotRoutes";
 import imageRoutes from "./routes/imageRoutes";
 import reservationRoutes from "./routes/reservationRoutes";
 import videoRoutes from "./routes/videoRoutes";
+import videoStatsRoutes from "./routes/videoStatsRoutes";
 
 dotenv.config();
 
@@ -32,7 +33,7 @@ app.use("/fields", fieldRoutes);
 app.use("/slots", slotRoutes);
 app.use("/reservations", reservationRoutes);
 app.use("/videos", videoRoutes);
-app.use("/videoStats", videoRoutes);
+app.use("/video-stats", videoStatsRoutes);
 
 app.listen(port, () => {
   console.log(`🚀 Server running on http://localhost:${port}`);
