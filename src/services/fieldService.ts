@@ -114,8 +114,7 @@ export const getFieldSlots = async (fieldId: string) => {
   try {
     const query = fieldId ? { field: new Types.ObjectId(fieldId) } : {};
     const slots = await Slot.find(query).populate("field");
-    const slotsPopulated = slots.map(updateImageSignedUrl);
-    return slotsPopulated;
+    return slots;
   } catch (error: any) {
     throw new Error(`Error fetching slots: ${error.message}`);
   }

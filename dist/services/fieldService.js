@@ -135,8 +135,7 @@ const getFieldSlots = (fieldId) => __awaiter(void 0, void 0, void 0, function* (
     try {
         const query = fieldId ? { field: new mongoose_1.Types.ObjectId(fieldId) } : {};
         const slots = yield Slot_1.default.find(query).populate("field");
-        const slotsPopulated = slots.map(updateImageSignedUrl);
-        return slotsPopulated;
+        return slots;
     }
     catch (error) {
         throw new Error(`Error fetching slots: ${error.message}`);
