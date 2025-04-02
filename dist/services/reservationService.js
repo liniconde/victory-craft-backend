@@ -44,7 +44,7 @@ const getReservationById = (id) => __awaiter(void 0, void 0, void 0, function* (
             .populate("user", "username email")
             .populate({
             path: "slot",
-            populate: { path: "field", select: "name location type" },
+            populate: { path: "field" },
         });
         if (!reservation)
             throw new Error("Reservation not found");
@@ -108,9 +108,9 @@ const getAllReservations = () => __awaiter(void 0, void 0, void 0, function* () 
             .populate("user", "username email")
             .populate({
             path: "slot",
-            populate: { path: "field" },
+            populate: { path: "field", model: "Field" },
         });
-        console.log("reservations", reservations);
+        console.log("reservations", reservations[0].user);
         return reservations;
     }
     catch (error) {

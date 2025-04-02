@@ -25,7 +25,7 @@ const handleCreateVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
                 .status(400)
                 .json({ error: "Field ID and S3 key and SlotId are required" });
         }
-        const video = yield (0, videoService_1.createVideo)({ fieldId, matchId, s3Key });
+        const video = yield (0, videoService_1.createVideo)({ fieldId, matchId, s3Key, slotId });
         res.status(201).json(video);
     }
     catch (error) {
