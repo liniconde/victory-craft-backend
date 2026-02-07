@@ -65,7 +65,7 @@ export const handleUpdateReservation = async (req: Request, res: Response) => {
  */
 export const handleDeleteReservation = async (req: Request, res: Response) => {
   try {
-    const deletedReservation = await deleteReservation(req.params.id);
+    const deletedReservation = await deleteReservation(req.params.id as string);
     if (!deletedReservation) {
       res.status(404).json({ message: "Reservation not found" });
     }

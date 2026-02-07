@@ -50,7 +50,7 @@ export const handleCreateVideo = async (req: Request, res: Response) => {
 // Actualizar un video
 export const handleUpdateVideo = async (req: Request, res: Response) => {
   try {
-    const updatedVideo = await updateVideo(req.params.id, req.body);
+    const updatedVideo = await updateVideo(req.params.id as string, req.body);
     if (!updatedVideo) {
       res.status(404).json({ message: "Video not found" });
     }

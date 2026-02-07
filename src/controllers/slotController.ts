@@ -88,7 +88,7 @@ export const handleUpdateSlot = async (req: Request, res: Response) => {
  */
 export const handleDeleteSlot = async (req: Request, res: Response) => {
   try {
-    const deletedSlot = await slotService.deleteSlot(req.params.id);
+    const deletedSlot = await slotService.deleteSlot(req.params.id as string);
     if (!deletedSlot) {
       res.status(404).json({ message: "Slot not found" });
     }

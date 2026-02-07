@@ -35,7 +35,7 @@ export const handleGetFields = async (req: Request, res: Response) => {
 // Obtener un campo por ID
 export const handleGetFieldById = async (req: Request, res: Response) => {
   try {
-    const field = await getFieldById(req.params.id);
+    const field = await getFieldById(req.params.id as string);
     if (!field) {
       res.status(404).json({ message: "Field not found" });
     }
@@ -48,7 +48,7 @@ export const handleGetFieldById = async (req: Request, res: Response) => {
 // Obtener un campo por ID
 export const handleGetFieldsByUserId = async (req: Request, res: Response) => {
   try {
-    const fields = await getFieldsByUserId(req.params.userId);
+    const fields = await getFieldsByUserId(req.params.userId as string);
     if (!fields) {
       res.status(404).json({ message: "Fields not found" });
     }
@@ -71,7 +71,7 @@ export const handleCreateField = async (req: Request, res: Response) => {
 // Actualizar un campo
 export const handleUpdateField = async (req: Request, res: Response) => {
   try {
-    const updatedField = await updateField(req.params.id, req.body);
+    const updatedField = await updateField(req.params.id as string, req.body);
     if (!updatedField) {
       res.status(404).json({ message: "Field not found" });
     }
@@ -84,7 +84,7 @@ export const handleUpdateField = async (req: Request, res: Response) => {
 // Eliminar un campo
 export const handleDeleteField = async (req: Request, res: Response) => {
   try {
-    const deletedField = await deleteField(req.params.id);
+    const deletedField = await deleteField(req.params.id as string);
     if (!deletedField) {
       res.status(404).json({ message: "Field not found" });
     }
