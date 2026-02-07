@@ -49,9 +49,10 @@ const VideoStatsSchema = new mongoose_1.Schema({
     teams: [
         {
             teamName: { type: String, required: true },
-            stats: { type: Map, of: Number, default: {} },
+            stats: { type: Object, default: {} },
         },
     ],
+    summary: { type: String, default: "" },
     generatedByModel: {
         type: String,
         enum: [
@@ -60,6 +61,7 @@ const VideoStatsSchema = new mongoose_1.Schema({
             "YOLOv8",
             "DeepSportAnalyzer",
             "BallTrackNet",
+            "Gemini-2.0-Flash",
         ],
         required: true,
         default: "manual",

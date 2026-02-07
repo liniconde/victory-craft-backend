@@ -40,6 +40,7 @@ const VideoSchema = new mongoose_1.Schema({
     slotId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Slot", required: true },
     s3Key: { type: String, required: true },
     s3Url: { type: String },
+    googleAiFileId: { type: String }, // Store Google AI File ID
 }, { timestamps: { createdAt: "uploadedAt" } } // Define `uploadedAt` automáticamente
 );
 exports.default = mongoose_1.default.model("Video", VideoSchema);

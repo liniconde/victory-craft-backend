@@ -13,20 +13,20 @@ exports.handleDeleteVideoStats = exports.handleUpdateVideoStats = exports.handle
 const videoStatsService_1 = require("../services/videoStatsService");
 /**
  * 📌 Crea estadísticas para un video.
- * Requiere: `videoId`, `sportType`, `teams`, `generatedByModel`.
+ * Requiere: `videoId`, `statistics` (incluye `teams`), `generatedByModel`.
  */
 const handleCreateVideoStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { videoId, sportType, teams, generatedByModel } = req.body;
-        if (!videoId || !sportType || !teams || !generatedByModel) {
+        const { videoId, statistics, generatedByModel } = req.body;
+        if (!videoId || !statistics || !statistics.sportType || !generatedByModel) {
             res.status(400).json({
-                message: "videoId, sportType, teams, and generatedByModel are required.",
+                message: "videoId, statistics.sportType (and optional statistics.teams), and generatedByModel are required.",
             });
+            return;
         }
         const stats = yield (0, videoStatsService_1.createVideoStats)({
             videoId,
-            sportType,
-            teams,
+            statistics,
             generatedByModel,
         });
         res.status(201).json(stats);

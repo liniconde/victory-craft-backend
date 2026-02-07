@@ -16,7 +16,7 @@ exports.deleteVideoStats = exports.updateVideoStats = exports.getVideoStatsByVid
 const VideoStats_1 = __importDefault(require("../models/VideoStats"));
 /**
  * Crea estadísticas para un video.
- * @param statsData - Objeto con videoId, sportType, teams, generatedByModel
+ * @param statsData - Objeto con videoId, statistics (incluye sportType y teams), generatedByModel
  * @returns Estadísticas creadas
  */
 const createVideoStats = (statsData) => __awaiter(void 0, void 0, void 0, function* () {

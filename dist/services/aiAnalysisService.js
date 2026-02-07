@@ -15,6 +15,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.analyzeVideo = void 0;
 const generative_ai_1 = require("@google/generative-ai");
 const server_1 = require("@google/generative-ai/server");
+// Polyfill `Headers` for environments where Fetch API is not available (Node <18)
+if (typeof global.Headers === "undefined") {
+    try {
+        // undici provides a Fetch-compatible Headers implementation
+        // use require so this works in CommonJS/ts-node
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { Headers } = require("undici");
+        global.Headers = Headers;
+    }
+    catch (e) {
+        console.warn("Could not polyfill global.Headers:", e);
+    }
+}
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const https_1 = __importDefault(require("https"));
@@ -50,64 +63,133 @@ const downloadFile = (url, destPath) => {
         });
     });
 };
-/**
- * Analyzes a video using Google Gemini AI.
- * @param videoId - The ID of the video in the database.
- * @param prompt - The question or prompt for the AI.
- * @returns The AI's text response.
- */
-const analyzeVideo = (videoId, prompt) => __awaiter(void 0, void 0, void 0, function* () {
+const VideoStats_1 = __importDefault(require("../models/VideoStats"));
+const football_1 = require("../utils/prompts/football");
+const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
     let localFilePath = "";
     let uploadResult = null;
+    let fileUri = "";
+    let fileMimeType = "";
     try {
-        // 1. Get Video Metadata
-        const video = yield Video_1.default.findById(videoId);
+        // 1. Get Video Metadata and Populate Field
+        const video = yield Video_1.default.findById(videoId).populate("fieldId");
         if (!video) {
             throw new Error("Video not found");
         }
-        // 2. Get S3 Signed URL for downloading
-        // The s3FilesService mostly returns the simpler signed URL string if checking getObjectS3SignedUrl implementation
-        const downloadUrl = yield (0, s3FilesService_1.getObjectS3SignedUrl)(video.s3Key);
-        // 3. Download to temp file
-        const tempDir = path_1.default.join(__dirname, "../../tmp");
-        if (!fs_1.default.existsSync(tempDir)) {
-            fs_1.default.mkdirSync(tempDir, { recursive: true });
+        if (!video.fieldId) {
+            throw new Error("Video is not associated with a field");
         }
-        const fileName = `temp_${videoId}_${Date.now()}.mp4`;
-        localFilePath = path_1.default.join(tempDir, fileName);
-        console.log(`Downloading video from S3 to ${localFilePath}...`);
-        yield downloadFile(downloadUrl, localFilePath);
-        // 4. Upload to Google AI
-        console.log("Uploading to Google AI File Manager...");
-        uploadResult = yield fileManager.uploadFile(localFilePath, {
-            mimeType: "video/mp4",
-            displayName: `Video Analysis ${videoId}`,
-        });
-        console.log(`Uploaded file: ${uploadResult.file.name}`);
-        // 5. Wait for processing
-        let file = yield fileManager.getFile(uploadResult.file.name);
-        while (file.state === server_1.FileState.PROCESSING) {
-            console.log("Processing video...");
-            yield new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2s
-            file = yield fileManager.getFile(uploadResult.file.name);
+        const fieldType = video.fieldId.type;
+        console.log(`Analyzing video for sport: ${fieldType}`);
+        // Select Prompt based on sport
+        let prompt = "";
+        // Todo: Get duration from video metadata or external service if possible.
+        // For now, prompt generic duration or we could assume 60s as max limit.
+        const estimatedDuration = 60;
+        if (fieldType === "football") {
+            prompt = (0, football_1.getFootballPrompt)(estimatedDuration);
         }
-        if (file.state === server_1.FileState.FAILED) {
-            throw new Error("Video processing failed by Google AI.");
+        else {
+            // Fallback or todo for other sports
+            prompt = (0, football_1.getFootballPrompt)(estimatedDuration); // Default to football for now or throw
         }
-        console.log("Video processing complete. generating content...");
+        // Check if video is already uploaded to Google AI
+        let isFileValid = false;
+        if (video.googleAiFileId) {
+            try {
+                const file = yield fileManager.getFile(video.googleAiFileId);
+                if (file.state === server_1.FileState.ACTIVE) {
+                    console.log("Using existing Google AI file:", video.googleAiFileId);
+                    fileUri = file.uri;
+                    fileMimeType = file.mimeType;
+                    isFileValid = true;
+                }
+                else if (file.state === server_1.FileState.FAILED) {
+                    console.log("Existing Google AI file is in FAILED state. Re-uploading.");
+                }
+            }
+            catch (err) {
+                console.log("Google AI file not found or expired. Re-uploading.");
+            }
+        }
+        if (!isFileValid) {
+            // 2. Get S3 Signed URL for downloading
+            const downloadUrl = yield (0, s3FilesService_1.getObjectS3SignedUrl)(video.s3Key);
+            // 3. Download to temp file
+            const tempDir = path_1.default.join(__dirname, "../../tmp");
+            if (!fs_1.default.existsSync(tempDir)) {
+                fs_1.default.mkdirSync(tempDir, { recursive: true });
+            }
+            const fileName = `temp_${videoId}_${Date.now()}.mp4`;
+            localFilePath = path_1.default.join(tempDir, fileName);
+            console.log(`Downloading video from S3 to ${localFilePath}...`);
+            yield downloadFile(downloadUrl, localFilePath);
+            // 4. Upload to Google AI
+            console.log("Uploading to Google AI File Manager...");
+            uploadResult = yield fileManager.uploadFile(localFilePath, {
+                mimeType: "video/mp4",
+                displayName: `Video Analysis ${videoId}`,
+            });
+            console.log(`Uploaded file: ${uploadResult.file.name}`);
+            // Save the new file ID to the database
+            if (uploadResult.file.name) {
+                // Use updateOne to avoid validating other fields like slotId if they are missing in old records
+                yield Video_1.default.updateOne({ _id: video._id }, { $set: { googleAiFileId: uploadResult.file.name } });
+            }
+            // 5. Wait for processing
+            let file = yield fileManager.getFile(uploadResult.file.name);
+            while (file.state === server_1.FileState.PROCESSING) {
+                console.log("Processing video...");
+                yield new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2s
+                file = yield fileManager.getFile(uploadResult.file.name);
+            }
+            if (file.state === server_1.FileState.FAILED) {
+                throw new Error("Video processing failed by Google AI.");
+            }
+            fileUri = file.uri;
+            fileMimeType = file.mimeType;
+        }
+        console.log("Generating content...");
         // 6. Generate Content
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        // Using gemini-flash-latest as requested/verified
+        const model = genAI.getGenerativeModel({
+            model: "gemini-flash-latest",
+            generationConfig: { responseMimeType: "application/json" },
+        });
         const result = yield model.generateContent([
             {
                 fileData: {
-                    mimeType: file.mimeType,
-                    fileUri: file.uri,
+                    mimeType: fileMimeType,
+                    fileUri: fileUri,
                 },
             },
             { text: prompt },
         ]);
         const response = yield result.response;
-        return response.text();
+        const textResponse = response.text();
+        // 7. Parse and Save Stats
+        try {
+            const statsJson = JSON.parse(textResponse);
+            // Save to VideoStats
+            const statsData = {
+                videoId: video._id,
+                // Try to pick a summary field from the model response if present
+                summary: statsJson.summary || statsJson.playSummary || "",
+                sportType: fieldType,
+                teams: statsJson.teams || [],
+                generatedByModel: "Gemini-2.0-Flash",
+            };
+            // Upsert stats
+            yield VideoStats_1.default.findOneAndUpdate({ videoId: video._id }, statsData, {
+                upsert: true,
+                new: true,
+            });
+            return Object.assign(Object.assign({}, statsJson), { message: "Stats generated and saved successfully." });
+        }
+        catch (parseError) {
+            console.error("Error parsing JSON response from Gemini:", textResponse);
+            throw new Error("Failed to parse AI response as JSON");
+        }
     }
     catch (error) {
         console.error("Error in AI analysis:", error);
@@ -115,20 +197,10 @@ const analyzeVideo = (videoId, prompt) => __awaiter(void 0, void 0, void 0, func
     }
     finally {
         // 7. Cleanup
-        // Delete local file
+        // Only delete local file. Do NOT delete remote file so we can reuse it.
         if (localFilePath && fs_1.default.existsSync(localFilePath)) {
             fs_1.default.unlinkSync(localFilePath);
             console.log("Deleted local temp file.");
-        }
-        // Delete remote file from Google AI to save storage/privacy
-        if (uploadResult && uploadResult.file && uploadResult.file.name) {
-            try {
-                yield fileManager.deleteFile(uploadResult.file.name);
-                console.log("Deleted remote Google AI file.");
-            }
-            catch (cleanupErr) {
-                console.error("Failed to delete remote file:", cleanupErr);
-            }
         }
     }
 });

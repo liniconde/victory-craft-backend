@@ -34,7 +34,12 @@ app.use("/slots", slotRoutes_1.default);
 app.use("/reservations", reservationRoutes_1.default);
 app.use("/videos", videoRoutes_1.default);
 app.use("/video-stats", videoStatsRoutes_1.default);
-app.listen(port, () => {
-    console.log(`🚀 Server running on http://localhost:${port}`);
-});
+// Export app for Vercel
+exports.default = app;
+// Start server only if run directly
+if (require.main === module) {
+    app.listen(port, () => {
+        console.log(`🚀 Server running on http://localhost:${port}`);
+    });
+}
 //# sourceMappingURL=index.js.map

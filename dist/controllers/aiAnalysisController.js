@@ -14,13 +14,9 @@ const aiAnalysisService_1 = require("../services/aiAnalysisService");
 const analyzeVideoController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { videoId } = req.params;
-        const { prompt } = req.body;
-        if (!prompt) {
-            res.status(400).json({ error: "Prompt is required" });
-            return;
-        }
-        const analysis = yield (0, aiAnalysisService_1.analyzeVideo)(videoId, prompt);
-        res.json({ analysis });
+        // Prompt is now determined internally by the service based on sport type
+        const analysis = yield (0, aiAnalysisService_1.analyzeVideo)(videoId);
+        res.json(analysis);
         return;
     }
     catch (error) {
