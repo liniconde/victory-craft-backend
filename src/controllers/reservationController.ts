@@ -99,7 +99,7 @@ export const handleGetReservationsByUser = async (
   res: Response
 ) => {
   try {
-    const reservations = await getReservationsByUserId(req.params.id);
+    const reservations = await getReservationsByUserId(req.params.id as string);
     res.status(200).json(reservations);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

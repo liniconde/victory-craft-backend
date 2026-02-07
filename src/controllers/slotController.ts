@@ -22,7 +22,7 @@ export const handleCreateSlot = async (req: Request, res: Response) => {
  */
 export const handleGetSlotById = async (req: Request, res: Response) => {
   try {
-    const slot = await slotService.getSlotById(req.params.id);
+    const slot = await slotService.getSlotById(req.params.id as string);
     if (!slot) {
       res.status(404).json({ message: "Slot not found" });
     }

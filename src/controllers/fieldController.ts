@@ -14,7 +14,7 @@ import {
 export const handleGetFieldVideos = async (req: Request, res: Response) => {
   try {
     const { id: fieldId } = req.params;
-    const videos = await getFieldVideos(fieldId);
+    const videos = await getFieldVideos(fieldId as string);
 
     res.status(200).json(videos);
   } catch (err: any) {
@@ -101,7 +101,7 @@ export const handleDeleteField = async (req: Request, res: Response) => {
  */
 export const handleGetFieldSlots = async (req: Request, res: Response) => {
   try {
-    const slots = await getFieldSlots(req.params.id);
+    const slots = await getFieldSlots(req.params.id as string);
     res.status(200).json(slots);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

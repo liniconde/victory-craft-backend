@@ -14,7 +14,7 @@ export const getConcerts = async (req: Request, res: Response) => {
 // Obtener un concierto por ID
 export const getConcertById = async (req: Request, res: Response) => {
   try {
-    const concert = await Concert.findById(req.params.id);
+    const concert = await Concert.findById(req.params.id as string);
     if (!concert) {
       res.status(400).json({
         message: "Concert not found",
@@ -54,7 +54,7 @@ export const updateConcert = async (req: Request, res: Response) => {
 // Eliminar un concierto
 export const deleteConcert = async (req: Request, res: Response) => {
   try {
-    await Concert.findByIdAndDelete(req.params.id);
+    await Concert.findByIdAndDelete(req.params.id as string);
     res.json({ message: "Concert deleted" });
   } catch (err: any) {
     res.status(500).json({ message: err.message });
