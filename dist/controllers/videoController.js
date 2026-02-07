@@ -9,9 +9,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleCreateVideo = void 0;
+exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
 const videoService_1 = require("../services/videoService");
 const s3FilesService_1 = require("../services/s3FilesService");
+const getVideosByFieldController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { fieldId } = req.params;
+        const videos = yield (0, videoService_1.getVideosByField)(fieldId);
+        if (!fieldId) {
+            res
+                .status(400)
+                .json({ error: "Field ID is required" });
+            return;
+        }
+        res.status(200).json(videos);
+    }
+    catch (error) {
+        console.error("error", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.getVideosByFieldController = getVideosByFieldController;
 /**
  * 📌 Crea un nuevo video asociado a una campo y opcionalmente a un partido.
  * Recibe `fieldId`, `matchId` (opcional) y `s3Key` desde el cuerpo de la solicitud.

@@ -14,6 +14,10 @@ const aiAnalysisService_1 = require("../services/aiAnalysisService");
 const analyzeVideoController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { videoId } = req.params;
+        if (!videoId || typeof videoId !== "string") {
+            res.status(400).json({ error: "Invalid video ID" });
+            return;
+        }
         // Prompt is now determined internally by the service based on sport type
         const analysis = yield (0, aiAnalysisService_1.analyzeVideo)(videoId);
         res.json(analysis);

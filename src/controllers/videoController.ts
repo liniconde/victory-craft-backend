@@ -1,6 +1,27 @@
 import { Request, Response } from "express";
-import { createVideo, updateVideo } from "../services/videoService";
+import { createVideo, updateVideo, getVideosByField } from "../services/videoService";
 import { getUploadS3SignedUrl } from "../services/s3FilesService";
+
+export const getVideosByFieldController = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const { fieldId } = req.params;
+    const videos = await getVideosByField(fieldId as string);
+
+    if (!fieldId) {
+      res
+        .status(400)
+        .json({ error: "Field ID is required" });
+      return;
+    }
+    res.status(200).json(videos);
+  } catch (error: any) {
+    console.error("error", error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 /**
  * 📌 Crea un nuevo video asociado a una campo y opcionalmente a un partido.

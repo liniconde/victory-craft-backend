@@ -77,7 +77,7 @@ export const handleLoginUser = async (req: Request, res: Response) => {
 // Actualizar un usuario
 export const handleUpdateUser = async (req: Request, res: Response) => {
   try {
-    const updatedUser = await updateUser(req.params.id, req.body);
+    const updatedUser = await updateUser(req.params.id as string, req.body);
     if (!updatedUser) {
       res.status(404).json({ message: "User not found" });
     }
@@ -90,7 +90,7 @@ export const handleUpdateUser = async (req: Request, res: Response) => {
 // Eliminar un usuario
 export const handleDeleteUser = async (req: Request, res: Response) => {
   try {
-    const deletedUser = await deleteUser(req.params.id);
+    const deletedUser = await deleteUser(req.params.id as string);
     if (!deletedUser) {
       res.status(404).json({ message: "User not found" });
     }

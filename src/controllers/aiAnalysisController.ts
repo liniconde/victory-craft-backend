@@ -5,6 +5,11 @@ export const analyzeVideoController = async (req: Request, res: Response) => {
   try {
     const { videoId } = req.params;
 
+    if (!videoId || typeof videoId !== "string") {
+      res.status(400).json({ error: "Invalid video ID" });
+      return;
+    }
+
     // Prompt is now determined internally by the service based on sport type
     const analysis = await analyzeVideo(videoId);
     res.json(analysis);
