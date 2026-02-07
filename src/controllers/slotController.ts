@@ -71,7 +71,7 @@ export const handleGetSlotsByFieldId = async (req: Request, res: Response) => {
  */
 export const handleUpdateSlot = async (req: Request, res: Response) => {
   try {
-    const updatedSlot = await slotService.updateSlot(req.params.id, req.body);
+    const updatedSlot = await slotService.updateSlot(req.params.id as string, req.body);
     if (!updatedSlot) {
       res.status(404).json({ message: "Slot not found" });
     }
