@@ -9,12 +9,14 @@ interface IVideoStats extends Document {
   videoId: mongoose.Types.ObjectId;
   sportType: "football" | "padel" | "tennis";
   teams: TeamStats[];
+  summary?: string;
   generatedByModel:
     | "manual"
     | "OpenPose"
     | "YOLOv8"
     | "DeepSportAnalyzer"
-    | "BallTrackNet";
+    | "BallTrackNet"
+    | "Gemini-2.0-Flash";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,9 +37,10 @@ const VideoStatsSchema = new Schema<IVideoStats>(
     teams: [
       {
         teamName: { type: String, required: true },
-        stats: { type: Map, of: Number, default: {} },
+        stats: { type: Object, default: {} },
       },
     ],
+    summary: { type: String, default: "" },
     generatedByModel: {
       type: String,
       enum: [
@@ -46,6 +49,7 @@ const VideoStatsSchema = new Schema<IVideoStats>(
         "YOLOv8",
         "DeepSportAnalyzer",
         "BallTrackNet",
+        "Gemini-2.0-Flash",
       ],
       required: true,
       default: "manual",

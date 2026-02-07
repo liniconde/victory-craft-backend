@@ -2,7 +2,7 @@ import VideoStats from "../models/VideoStats";
 
 /**
  * Crea estadísticas para un video.
- * @param statsData - Objeto con videoId, sportType, teams, generatedByModel
+ * @param statsData - Objeto con videoId, statistics (incluye sportType y teams), generatedByModel
  * @returns Estadísticas creadas
  */
 export const createVideoStats = async (statsData: any) => {

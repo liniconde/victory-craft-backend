@@ -23,7 +23,7 @@ app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // Conectar con MongoDB
 mongoose_1.default
-    .connect(process.env.MONGO_URI)
+    .connect(process.env.MONGO_URI_3)
     .then(() => console.log("✅ MongoDB Connected"))
     .catch((err) => console.error(err));
 app.use("/concerts", concertRoutes_1.default);

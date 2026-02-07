@@ -8,23 +8,23 @@ import {
 
 /**
  * 📌 Crea estadísticas para un video.
- * Requiere: `videoId`, `sportType`, `teams`, `generatedByModel`.
+ * Requiere: `videoId`, `statistics` (incluye `teams`), `generatedByModel`.
  */
 export const handleCreateVideoStats = async (req: Request, res: Response) => {
   try {
-    const { videoId, sportType, teams, generatedByModel } = req.body;
+    const { videoId, statistics, generatedByModel } = req.body;
 
-    if (!videoId || !sportType || !teams || !generatedByModel) {
+    if (!videoId || !statistics || !statistics.sportType || !generatedByModel) {
       res.status(400).json({
         message:
-          "videoId, sportType, teams, and generatedByModel are required.",
+          "videoId, statistics.sportType (and optional statistics.teams), and generatedByModel are required.",
       });
+      return;
     }
 
     const stats = await createVideoStats({
       videoId,
-      sportType,
-      teams,
+      statistics,
       generatedByModel,
     });
     res.status(201).json(stats);

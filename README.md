@@ -1,6 +1,9 @@
-## 🏟️ **Backend - Reserva de Campos Deportivas** 🏃⚽
+## 🏟️ **Backend - Microservicio de Gestión Deportiva** 🏃⚽
 
-📍 **API para gestionar campos deportivas, reservas y usuarios.**Este backend proporciona un servicio RESTful para administrar los datos de las campos, reservas y usuarios.
+Este es un backend bajo una arquitectura de microserivcios que se encarga de gestionar la aplicación web en React. Sus principales funciones son:
+- Gestión de canchas y partidos para deportes como fútbol, pádel y tenis.
+- Subida de videos de los partidos.
+- Generación de estadísticas de análisis de partidos.
 
 ---
 

@@ -4,6 +4,7 @@ import {
   handleUploadVideo,
   handleUpdateVideo
 } from "../controllers/videoController";
+import { analyzeVideoController } from "../controllers/aiAnalysisController";
 
 const router = express.Router();
 
@@ -11,5 +12,6 @@ const router = express.Router();
 router.post("/", handleCreateVideo);
 router.put("/:id", handleUpdateVideo);
 router.post("/upload", handleUploadVideo);
+router.post("/:videoId/analyze", analyzeVideoController);
 
 export default router;

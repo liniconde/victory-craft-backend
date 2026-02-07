@@ -7,6 +7,7 @@ import {
   getUsers,
   updateUser,
 } from "../services/userService";
+import { isDevMode } from "../utils/utils";
 
 // Obtener todos los usuarios
 export const handleGetUsers = async (req: Request, res: Response) => {
@@ -44,6 +45,23 @@ export const handleRegisterUser = async (req: Request, res: Response) => {
 // Iniciar sesión
 export const handleLoginUser = async (req: Request, res: Response) => {
   try {
+    if (isDevMode()) {
+      res.json({
+        user: {
+          email: "js.ve@gmail.com",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          username: "string",
+          password: "string",
+          firstName: "string",
+          lastName: "string",
+          role: "admin",
+          profileImage: "string",
+        },
+        token: "agsdhjkldf",
+      });
+      return;
+    }
     const { email, password } = req.body;
     if (!email || !password) {
       res.status(400).json({ message: "Email and password are required" });

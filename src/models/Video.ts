@@ -6,6 +6,7 @@ interface IVideo extends Document {
   slotId: mongoose.Types.ObjectId;
   s3Key: string; // Identificador en S3
   s3Url?: string; // URL pública o firmada de S3
+  googleAiFileId?: string;
   uploadedAt: Date;
 }
 
@@ -16,6 +17,7 @@ const VideoSchema = new Schema<IVideo>(
     slotId: { type: Schema.Types.ObjectId, ref: "Slot", required: true },
     s3Key: { type: String, required: true },
     s3Url: { type: String },
+    googleAiFileId: { type: String }, // Store Google AI File ID
   },
   { timestamps: { createdAt: "uploadedAt" } } // Define `uploadedAt` automáticamente
 );
