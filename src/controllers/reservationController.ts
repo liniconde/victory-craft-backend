@@ -29,9 +29,10 @@ export const handleCreateReservation = async (req: Request, res: Response) => {
  */
 export const handleGetReservationById = async (req: Request, res: Response) => {
   try {
-    const reservation = await getReservationById(req.params.id);
+    const reservation = await getReservationById(req.params.id as string); // Cast req.params.id
     if (!reservation) {
       res.status(404).json({ message: "Reservation not found" });
+      return; // Added return for consistency
     }
     res.status(200).json(reservation);
   } catch (error: any) {
@@ -46,9 +47,10 @@ export const handleGetReservationById = async (req: Request, res: Response) => {
  */
 export const handleUpdateReservation = async (req: Request, res: Response) => {
   try {
-    const updatedReservation = await updateReservation(req.params.id, req.body);
+    const updatedReservation = await updateReservation(req.params.id as string, req.body); // Cast req.params.id
     if (!updatedReservation) {
       res.status(404).json({ message: "Reservation not found" });
+      return; // Added return for consistency
     }
     res.status(200).json(updatedReservation);
   } catch (error: any) {

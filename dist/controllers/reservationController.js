@@ -33,9 +33,10 @@ exports.handleCreateReservation = handleCreateReservation;
  */
 const handleGetReservationById = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const reservation = yield (0, reservationService_1.getReservationById)(req.params.id);
+        const reservation = yield (0, reservationService_1.getReservationById)(req.params.id); // Cast req.params.id
         if (!reservation) {
             res.status(404).json({ message: "Reservation not found" });
+            return; // Added return for consistency
         }
         res.status(200).json(reservation);
     }
@@ -51,9 +52,10 @@ exports.handleGetReservationById = handleGetReservationById;
  */
 const handleUpdateReservation = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const updatedReservation = yield (0, reservationService_1.updateReservation)(req.params.id, req.body);
+        const updatedReservation = yield (0, reservationService_1.updateReservation)(req.params.id, req.body); // Cast req.params.id
         if (!updatedReservation) {
             res.status(404).json({ message: "Reservation not found" });
+            return; // Added return for consistency
         }
         res.status(200).json(updatedReservation);
     }

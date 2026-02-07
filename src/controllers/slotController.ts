@@ -57,7 +57,7 @@ export const handleGetSlots = async (req: Request, res: Response) => {
 export const handleGetSlotsByFieldId = async (req: Request, res: Response) => {
   try {
     const fieldId = req.params.id;
-    const slots = await slotService.getSlotsByFieldId(fieldId);
+    const slots = await slotService.getSlotsByFieldId(fieldId as string);
     res.status(200).json(slots);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
