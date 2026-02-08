@@ -30,6 +30,7 @@ if (typeof global.Headers === "undefined") {
 }
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
+const os_1 = __importDefault(require("os"));
 const https_1 = __importDefault(require("https"));
 const Video_1 = __importDefault(require("../models/Video"));
 const s3FilesService_1 = require("./s3FilesService");
@@ -116,7 +117,9 @@ const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* ()
             // 2. Get S3 Signed URL for downloading
             const downloadUrl = yield (0, s3FilesService_1.getObjectS3SignedUrl)(video.s3Key);
             // 3. Download to temp file
-            const tempDir = path_1.default.join(__dirname, "../../tmp");
+            // Use the system temp directory (writable in serverless environments like Vercel)
+            const systemTemp = process.env.TMPDIR || os_1.default.tmpdir();
+            const tempDir = path_1.default.join(systemTemp, "victorycraft-tmp");
             if (!fs_1.default.existsSync(tempDir)) {
                 fs_1.default.mkdirSync(tempDir, { recursive: true });
             }

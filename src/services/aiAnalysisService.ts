@@ -14,6 +14,7 @@ if (typeof (global as any).Headers === "undefined") {
 }
 import fs from "fs";
 import path from "path";
+import os from "os";
 import https from "https";
 import Video from "../models/Video";
 import { getObjectS3SignedUrl } from "./s3FilesService";
@@ -124,7 +125,9 @@ export const analyzeVideo = async (videoId: string) => {
       const downloadUrl = await getObjectS3SignedUrl(video.s3Key);
 
       // 3. Download to temp file
-      const tempDir = path.join(__dirname, "../../tmp");
+      // Use the system temp directory (writable in serverless environments like Vercel)
+      const systemTemp = process.env.TMPDIR || os.tmpdir();
+      const tempDir = path.join(systemTemp, "victorycraft-tmp");
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
