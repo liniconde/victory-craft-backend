@@ -7,6 +7,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const UserSchema = new mongoose_1.default.Schema({
     username: { type: String, required: true, unique: true }, // Nombre de usuario único
     email: { type: String, required: true, unique: true }, // Correo electrónico único
+    googleSub: { type: String, unique: true, sparse: true }, // Subject de Google OAuth
     password: { type: String, required: true }, // Contraseña hasheada
     firstName: { type: String, required: true }, // Nombre
     lastName: { type: String, required: true }, // Apellido

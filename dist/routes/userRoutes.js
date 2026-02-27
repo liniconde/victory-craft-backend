@@ -5,8 +5,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const userController_1 = require("../controllers/userController");
+const oauthController_1 = require("../controllers/oauthController");
 const router = express_1.default.Router();
 // Definir rutas y conectarlas con el controlador
+router.get("/oauth2/google", oauthController_1.startGoogleOAuthController);
+router.get("/oauth2/google/callback", oauthController_1.googleOAuthCallbackController);
 router.get("/", userController_1.handleGetUsers);
 router.get("/:id", userController_1.handleGetUserById);
 router.put("/:id", userController_1.handleUpdateUser);

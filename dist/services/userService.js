@@ -15,8 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteUser = exports.updateUser = exports.loginUser = exports.registerUser = exports.getUserById = exports.getUsers = void 0;
 const User_1 = __importDefault(require("../models/User"));
 const bcrypt_1 = __importDefault(require("bcrypt"));
-const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
-const SECRET_KEY = process.env.SECRET_KEY || "default_secret";
+const auth_1 = require("../config/auth");
 // Obtener todos los usuarios
 const getUsers = () => __awaiter(void 0, void 0, void 0, function* () {
     return User_1.default.find();
@@ -48,8 +47,10 @@ const registerUser = (userData) => __awaiter(void 0, void 0, void 0, function* (
     });
     yield newUser.save();
     // Generar token JWT
-    const token = jsonwebtoken_1.default.sign({ id: newUser._id, email: newUser.email }, SECRET_KEY, {
-        expiresIn: "7d",
+    const token = (0, auth_1.signAppToken)({
+        id: newUser._id,
+        email: newUser.email,
+        role: newUser.role,
     });
     return { user: newUser, token };
 });
@@ -66,8 +67,10 @@ const loginUser = (email, password) => __awaiter(void 0, void 0, void 0, functio
         throw new Error("Invalid credentials");
     }
     // Generar token JWT
-    const token = jsonwebtoken_1.default.sign({ id: user._id, email: user.email, role: user.role }, SECRET_KEY, {
-        expiresIn: "7d",
+    const token = (0, auth_1.signAppToken)({
+        id: user._id,
+        email: user.email,
+        role: user.role,
     });
     return { user, token };
 });

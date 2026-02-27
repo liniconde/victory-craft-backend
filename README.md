@@ -40,12 +40,18 @@ npm install
 ```env
 PORT=5001
 SECRET_KEY=tu_secret
+JWT_SECRET=tu_jwt_secret
 AWS_ACCESS_KEY_ID = asddadffd
 AWS_SECRET_ACCESS_KEY = saddasasada
 AWS_REGION=us-east-1
 BUCKET_NAME=tu-bucket
 MONGO_URI=mongodb+srv://xxxxxxxxx
 MONGO_URI_3=mongodb+srv://xxxxxxxxx
+GOOGLE_CLIENT_ID=tu_google_client_id
+GOOGLE_CLIENT_SECRET=tu_google_client_secret
+GOOGLE_CALLBACK_URL=https://victory-craft-backend.vercel.app/users/oauth2/google/callback
+OAUTH_ALLOWED_REDIRECT_URIS=https://victory-craft-front.vercel.app/auth/callback,https://victory-craft-front-spa.vercel.app/auth/callback,http://localhost:5173/auth/callback
+CORS_ALLOWED_ORIGINS=https://victory-craft-front.vercel.app,https://victory-craft-front-spa.vercel.app,http://localhost:5173
 ```
 
 ### **4️⃣ Ejecutar el backend**
@@ -86,6 +92,34 @@ Se agregó el diagrama ER basado en los modelos actuales:
 - `contract/database-schema.md`
 
 Si usas VS Code, abre ese archivo y usa "Open Preview" para ver el diagrama Mermaid renderizado.
+
+### **7️⃣ OAuth 2.0 con Google**
+
+#### Endpoints
+
+- Inicio OAuth:
+  - `GET /users/oauth2/google?redirect_uri=<FRONT_CALLBACK>&return_to=<PATH>`
+- Callback:
+  - `GET /users/oauth2/google/callback`
+
+#### Flujo esperado con frontend
+
+1. Front redirige a:
+   - `/users/oauth2/google?redirect_uri=https://victory-craft-front.vercel.app/auth/callback&return_to=/fields/videos`
+2. Backend redirige a Google.
+3. Google retorna al callback del backend.
+4. Backend redirige al frontend:
+   - Exito: `https://victory-craft-front.vercel.app/auth/callback?token=<JWT_APP>&return_to=/fields/videos`
+   - Error: `https://victory-craft-front.vercel.app/auth/callback?error=<CODE>`
+
+#### Google Console (OAuth Client)
+
+- Authorized redirect URI:
+  - `https://victory-craft-backend.vercel.app/users/oauth2/google/callback`
+- Authorized JavaScript origins:
+  - `https://victory-craft-front.vercel.app`
+  - `https://victory-craft-front-spa.vercel.app`
+  - `http://localhost:5173`
 
 ---
 

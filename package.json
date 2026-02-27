@@ -8,7 +8,8 @@
     "ts.check": "tsc --project tsconfig.json",
     "add-build": "git add dist",
     "dev": "ts-node src/index.ts",
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test tests/oauth2.test.js",
+    "test:oauth": "node --test tests/oauth2.test.js",
     "pre-commit": "tsc --project tsconfig.json && rimraf dist && tsc && git add dist"
   },
   "keywords": [],

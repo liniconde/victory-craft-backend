@@ -1,8 +1,6 @@
 import User from "../models/User";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-
-const SECRET_KEY = process.env.SECRET_KEY || "default_secret";
+import { signAppToken } from "../config/auth";
 
 // Obtener todos los usuarios
 export const getUsers = async () => {
@@ -40,13 +38,11 @@ export const registerUser = async (userData: any) => {
   await newUser.save();
 
   // Generar token JWT
-  const token = jwt.sign(
-    { id: newUser._id, email: newUser.email },
-    SECRET_KEY,
-    {
-      expiresIn: "7d",
-    }
-  );
+  const token = signAppToken({
+    id: newUser._id,
+    email: newUser.email,
+    role: newUser.role,
+  });
 
   return { user: newUser, token };
 };
@@ -65,13 +61,11 @@ export const loginUser = async (email: string, password: string) => {
   }
 
   // Generar token JWT
-  const token = jwt.sign(
-    { id: user._id, email: user.email, role: user.role },
-    SECRET_KEY,
-    {
-      expiresIn: "7d",
-    }
-  );
+  const token = signAppToken({
+    id: user._id,
+    email: user.email,
+    role: user.role,
+  });
 
   return { user, token };
 };

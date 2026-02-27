@@ -19,8 +19,45 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
 const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
+const defaultCorsOrigins = [
+    "https://victory-craft-front.vercel.app",
+    "https://victory-craft-front-spa.vercel.app",
+    "http://localhost:5173",
+];
+const envCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+const oauthRedirectOrigins = (process.env.OAUTH_ALLOWED_REDIRECT_URIS || "")
+    .split(",")
+    .map((uri) => uri.trim())
+    .filter(Boolean)
+    .map((uri) => {
+    try {
+        return new URL(uri).origin;
+    }
+    catch (_error) {
+        return "";
+    }
+})
+    .filter(Boolean);
+const allowedOrigins = new Set((envCorsOrigins.length ? envCorsOrigins : [...oauthRedirectOrigins, ...defaultCorsOrigins])
+    .filter(Boolean));
 // Middlewares
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: (origin, callback) => {
+        if (!origin) {
+            callback(null, true);
+            return;
+        }
+        if (allowedOrigins.has(origin)) {
+            callback(null, true);
+            return;
+        }
+        callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+}));
 app.use(express_1.default.json());
 // Conectar con MongoDB
 if (mongoUri) {

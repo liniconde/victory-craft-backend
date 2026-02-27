@@ -137,6 +137,58 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /users/oauth2/google:
+    get:
+      tags: [Users]
+      summary: Iniciar OAuth 2.0 con Google
+      parameters:
+        - in: query
+          name: redirect_uri
+          required: true
+          schema:
+            type: string
+            format: uri
+        - in: query
+          name: return_to
+          required: false
+          schema:
+            type: string
+            default: /
+      responses:
+        "302":
+          description: Redireccion a Google OAuth consent screen
+        "400":
+          description: redirect_uri no permitido o configuracion invalida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/oauth2/google/callback:
+    get:
+      tags: [Users]
+      summary: Callback OAuth 2.0 de Google
+      parameters:
+        - in: query
+          name: code
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: state
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redireccion al frontend con token o error
+        "400":
+          description: Error en callback OAuth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /fields:
     get:
       tags: [Fields]
@@ -865,6 +917,17 @@ paths:
           $ref: "#/components/responses/InternalError"
 
 components:
+  securitySchemes:
+    GoogleOAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: https://accounts.google.com/o/oauth2/v2/auth
+          tokenUrl: https://oauth2.googleapis.com/token
+          scopes:
+            openid: OpenID scope
+            email: User email
+            profile: Basic profile
   parameters:
     IdParam:
       in: path
@@ -916,6 +979,8 @@ components:
         email:
           type: string
           format: email
+        googleSub:
+          type: string
         firstName:
           type: string
         lastName:
