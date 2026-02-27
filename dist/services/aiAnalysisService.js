@@ -64,9 +64,16 @@ const downloadFile = (url, destPath) => {
         });
     });
 };
+/**
+ * Analyzes a video using Google Gemini AI.
+ * @param videoId - The ID of the video in the database.
+ * @param prompt - The question or prompt for the AI.
+ * @returns The AI's text response.
+ */
 const VideoStats_1 = __importDefault(require("../models/VideoStats"));
 const football_1 = require("../utils/prompts/football");
 const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     let localFilePath = "";
     let uploadResult = null;
     let fileUri = "";
@@ -77,10 +84,10 @@ const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* ()
         if (!video) {
             throw new Error("Video not found");
         }
-        if (!video.fieldId) {
-            throw new Error("Video is not associated with a field");
+        const fieldType = ((_a = video.fieldId) === null || _a === void 0 ? void 0 : _a.type) || video.sportType;
+        if (!fieldType) {
+            throw new Error("Sport type could not be determined. Associate fieldId or set video.sportType.");
         }
-        const fieldType = video.fieldId.type;
         console.log(`Analyzing video for sport: ${fieldType}`);
         // Select Prompt based on sport
         let prompt = "";

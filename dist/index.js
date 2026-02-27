@@ -18,14 +18,20 @@ const videoStatsRoutes_1 = __importDefault(require("./routes/videoStatsRoutes"))
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
+const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
 // Middlewares
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 // Conectar con MongoDB
-mongoose_1.default
-    .connect(process.env.MONGO_URI_3)
-    .then(() => console.log("✅ MongoDB Connected"))
-    .catch((err) => console.error(err));
+if (mongoUri) {
+    mongoose_1.default
+        .connect(mongoUri)
+        .then(() => console.log("✅ MongoDB Connected"))
+        .catch((err) => console.error("MongoDB connection error:", err));
+}
+else {
+    console.warn("⚠️ MongoDB URI not found (MONGO_URI_3 or MONGO_URI).");
+}
 app.use("/concerts", concertRoutes_1.default);
 app.use("/images", imageRoutes_1.default);
 app.use("/users", userRoutes_1.default);

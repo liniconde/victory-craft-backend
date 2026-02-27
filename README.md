@@ -79,6 +79,14 @@ Para detener:
 docker compose down
 ```
 
+### **6️⃣ Revisar esquema visual de base de datos**
+
+Se agregó el diagrama ER basado en los modelos actuales:
+
+- `contract/database-schema.md`
+
+Si usas VS Code, abre ese archivo y usa "Open Preview" para ver el diagrama Mermaid renderizado.
+
 ---
 
 ## 📌 **🛠️ Contribuir**

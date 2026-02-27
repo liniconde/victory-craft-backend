@@ -36,8 +36,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 // Esquema de Mongoose
 const VideoSchema = new mongoose_1.Schema({
-    fieldId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Field", required: true },
-    slotId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Slot", required: true },
+    fieldId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Field", required: false },
+    slotId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Slot", required: false },
+    videoType: {
+        type: String,
+        enum: ["field", "library"],
+        default: "field",
+        required: false,
+    },
+    sportType: {
+        type: String,
+        enum: ["football", "padel", "tennis"],
+        required: false,
+    },
     s3Key: { type: String, required: true },
     s3Url: { type: String },
     googleAiFileId: { type: String }, // Store Google AI File ID

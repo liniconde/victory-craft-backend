@@ -1,5 +1,11 @@
 import { Request, Response } from "express";
-import { createVideo, updateVideo, getVideosByField } from "../services/videoService";
+import {
+  createLibraryVideo,
+  createVideo,
+  getLibraryVideosPaginated,
+  updateVideo,
+  getVideosByField,
+} from "../services/videoService";
 import { getUploadS3SignedUrl } from "../services/s3FilesService";
 
 export const getVideosByFieldController = async (
@@ -37,10 +43,55 @@ export const handleCreateVideo = async (req: Request, res: Response) => {
       res
         .status(400)
         .json({ error: "Field ID and S3 key and SlotId are required" });
+      return;
     }
 
     const video = await createVideo({ fieldId, matchId, s3Key, slotId });
     res.status(201).json(video);
+  } catch (error: any) {
+    console.error("error", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Crea un nuevo video de biblioteca.
+ * Solo requiere `s3Key`, y opcionalmente `sportType` para facilitar analisis.
+ */
+export const handleCreateLibraryVideo = async (req: Request, res: Response) => {
+  try {
+    const { s3Key, sportType, s3Url } = req.body;
+
+    if (!s3Key) {
+      res.status(400).json({ error: "S3 key is required" });
+      return;
+    }
+
+    const video = await createLibraryVideo({ s3Key, sportType, s3Url });
+    res.status(201).json(video);
+  } catch (error: any) {
+    console.error("error", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+/**
+ * Obtiene videos de biblioteca paginados para render de listado.
+ */
+export const handleGetLibraryVideos = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 20);
+
+    if (!Number.isFinite(page) || !Number.isFinite(limit)) {
+      res
+        .status(400)
+        .json({ message: "page and limit must be valid numbers" });
+      return;
+    }
+
+    const result = await getLibraryVideosPaginated(page, limit);
+    res.status(200).json(result);
   } catch (error: any) {
     console.error("error", error);
     res.status(500).json({ message: error.message });
@@ -71,6 +122,7 @@ export const handleUploadVideo = async (req: Request, res: Response) => {
     const { objectKey } = req.body;
     if (!objectKey) {
       res.status(400).json({ message: "objectKey is required" });
+      return;
     }
 
     const { url, s3Url } = getUploadS3SignedUrl(objectKey);

@@ -63,7 +63,6 @@ const downloadFile = (url: string, destPath: string): Promise<void> => {
  * @param prompt - The question or prompt for the AI.
  * @returns The AI's text response.
  */
-import Field from "../models/Field";
 import VideoStats from "../models/VideoStats";
 import { getFootballPrompt } from "../utils/prompts/football";
 
@@ -80,11 +79,13 @@ export const analyzeVideo = async (videoId: string) => {
       throw new Error("Video not found");
     }
 
-    if (!video.fieldId) {
-      throw new Error("Video is not associated with a field");
+    const fieldType = video.fieldId?.type || video.sportType;
+    if (!fieldType) {
+      throw new Error(
+        "Sport type could not be determined. Associate fieldId or set video.sportType.",
+      );
     }
 
-    const fieldType = video.fieldId.type;
     console.log(`Analyzing video for sport: ${fieldType}`);
 
     // Select Prompt based on sport

@@ -15,16 +15,21 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5001;
+const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
 
 // Middlewares
 app.use(cors());
 app.use(express.json());
 
 // Conectar con MongoDB
-mongoose
-  .connect(process.env.MONGO_URI_3 as string)
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch((err) => console.error(err));
+if (mongoUri) {
+  mongoose
+    .connect(mongoUri)
+    .then(() => console.log("✅ MongoDB Connected"))
+    .catch((err) => console.error("MongoDB connection error:", err));
+} else {
+  console.warn("⚠️ MongoDB URI not found (MONGO_URI_3 or MONGO_URI).");
+}
 
 app.use("/concerts", concertRoutes);
 app.use("/images", imageRoutes);

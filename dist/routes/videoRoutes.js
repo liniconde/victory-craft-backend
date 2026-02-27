@@ -9,6 +9,8 @@ const aiAnalysisController_1 = require("../controllers/aiAnalysisController");
 const router = express_1.default.Router();
 // 📌 Endpoint para crear un nuevo video
 router.post("/", videoController_1.handleCreateVideo);
+router.post("/library", videoController_1.handleCreateLibraryVideo);
+router.get("/library", videoController_1.handleGetLibraryVideos);
 router.put("/:id", videoController_1.handleUpdateVideo);
 router.post("/upload", videoController_1.handleUploadVideo);
 router.post("/:videoId/analyze", aiAnalysisController_1.analyzeVideoController);

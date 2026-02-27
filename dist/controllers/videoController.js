@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
+exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleGetLibraryVideos = exports.handleCreateLibraryVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
 const videoService_1 = require("../services/videoService");
 const s3FilesService_1 = require("../services/s3FilesService");
 const getVideosByFieldController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -42,6 +42,7 @@ const handleCreateVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
             res
                 .status(400)
                 .json({ error: "Field ID and S3 key and SlotId are required" });
+            return;
         }
         const video = yield (0, videoService_1.createVideo)({ fieldId, matchId, s3Key, slotId });
         res.status(201).json(video);
@@ -52,6 +53,49 @@ const handleCreateVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.handleCreateVideo = handleCreateVideo;
+/**
+ * Crea un nuevo video de biblioteca.
+ * Solo requiere `s3Key`, y opcionalmente `sportType` para facilitar analisis.
+ */
+const handleCreateLibraryVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { s3Key, sportType, s3Url } = req.body;
+        if (!s3Key) {
+            res.status(400).json({ error: "S3 key is required" });
+            return;
+        }
+        const video = yield (0, videoService_1.createLibraryVideo)({ s3Key, sportType, s3Url });
+        res.status(201).json(video);
+    }
+    catch (error) {
+        console.error("error", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.handleCreateLibraryVideo = handleCreateLibraryVideo;
+/**
+ * Obtiene videos de biblioteca paginados para render de listado.
+ */
+const handleGetLibraryVideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const page = Number((_a = req.query.page) !== null && _a !== void 0 ? _a : 1);
+        const limit = Number((_b = req.query.limit) !== null && _b !== void 0 ? _b : 20);
+        if (!Number.isFinite(page) || !Number.isFinite(limit)) {
+            res
+                .status(400)
+                .json({ message: "page and limit must be valid numbers" });
+            return;
+        }
+        const result = yield (0, videoService_1.getLibraryVideosPaginated)(page, limit);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        console.error("error", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.handleGetLibraryVideos = handleGetLibraryVideos;
 // Actualizar un video
 const handleUpdateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -77,6 +121,7 @@ const handleUploadVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
         const { objectKey } = req.body;
         if (!objectKey) {
             res.status(400).json({ message: "objectKey is required" });
+            return;
         }
         const { url, s3Url } = (0, s3FilesService_1.getUploadS3SignedUrl)(objectKey);
         res.status(200).json({ uploadUrl: url, s3Url, objectKey });

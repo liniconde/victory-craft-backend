@@ -501,7 +501,7 @@ paths:
   /videos:
     post:
       tags: [Videos]
-      summary: Crear registro de video
+      summary: Crear registro de video asociado a campo/slot
       requestBody:
         required: true
         content:
@@ -511,6 +511,60 @@ paths:
       responses:
         "201":
           description: Video creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos/library:
+    get:
+      tags: [Videos]
+      summary: Listar videos de biblioteca (paginado)
+      description: >
+        Devuelve items livianos para listado con URL firmada de reproduccion.
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Lista paginada de videos de biblioteca
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoLibraryPaginatedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Videos]
+      summary: Crear registro de video para biblioteca (sin cancha)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoLibraryCreateRequest"
+      responses:
+        "201":
+          description: Video de biblioteca creado
           content:
             application/json:
               schema:
@@ -1115,8 +1169,16 @@ components:
           type: string
         fieldId:
           type: string
+          nullable: true
         slotId:
           type: string
+          nullable: true
+        videoType:
+          type: string
+          enum: [field, library]
+        sportType:
+          type: string
+          enum: [football, padel, tennis]
         s3Key:
           type: string
         s3Url:
@@ -1160,6 +1222,57 @@ components:
         s3Key:
           type: string
 
+    VideoLibraryCreateRequest:
+      type: object
+      required: [s3Key]
+      properties:
+        s3Key:
+          type: string
+        sportType:
+          type: string
+          enum: [football, padel, tennis]
+        s3Url:
+          type: string
+
+    VideoLibraryListItem:
+      type: object
+      properties:
+        _id:
+          type: string
+        s3Key:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        videoUrl:
+          type: string
+
+    PaginationMeta:
+      type: object
+      properties:
+        page:
+          type: integer
+        limit:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNextPage:
+          type: boolean
+        hasPrevPage:
+          type: boolean
+
+    VideoLibraryPaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoLibraryListItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
     VideoUpdateRequest:
       type: object
       properties:
@@ -1167,6 +1280,12 @@ components:
           type: string
         slotId:
           type: string
+        videoType:
+          type: string
+          enum: [field, library]
+        sportType:
+          type: string
+          enum: [football, padel, tennis]
         s3Key:
           type: string
         s3Url:
