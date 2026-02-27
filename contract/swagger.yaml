@@ -1,0 +1,1384 @@
+openapi: 3.0.3
+info:
+  title: Victory Craft Backend API
+  version: 1.0.0
+  description: >
+    Contrato OpenAPI del microservicio de Victory Craft para gestion de
+    usuarios, campos deportivos (football, tennis, padel), slots, reservas,
+    videos, imagenes y estadisticas.
+servers:
+  - url: http://localhost:5001
+    description: Local
+tags:
+  - name: Users
+  - name: Fields
+  - name: Slots
+  - name: Reservations
+  - name: Videos
+  - name: Video Stats
+  - name: Images
+  - name: Concerts
+paths:
+  /users:
+    get:
+      tags: [Users]
+      summary: Listar usuarios
+      responses:
+        "200":
+          description: Lista de usuarios
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/{id}:
+    get:
+      tags: [Users]
+      summary: Obtener usuario por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Users]
+      summary: Actualizar usuario
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdateRequest"
+      responses:
+        "200":
+          description: Usuario actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Users]
+      summary: Eliminar usuario
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Usuario eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /users/register:
+    post:
+      tags: [Users]
+      summary: Registrar usuario
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRegisterRequest"
+      responses:
+        "201":
+          description: Usuario registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /users/login:
+    post:
+      tags: [Users]
+      summary: Iniciar sesion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserLoginRequest"
+      responses:
+        "200":
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Credenciales invalidas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /fields:
+    get:
+      tags: [Fields]
+      summary: Listar campos deportivos
+      responses:
+        "200":
+          description: Lista de campos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Field"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Fields]
+      summary: Crear campo deportivo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldInput"
+      responses:
+        "201":
+          description: Campo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Field"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /fields/{id}:
+    get:
+      tags: [Fields]
+      summary: Obtener campo por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Campo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Field"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Fields]
+      summary: Actualizar campo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FieldUpdateRequest"
+      responses:
+        "200":
+          description: Campo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Field"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Fields]
+      summary: Eliminar campo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Campo eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /fields/users/{userId}:
+    get:
+      tags: [Fields]
+      summary: Listar campos por usuario propietario
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de campos del usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Field"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /fields/{id}/slots:
+    get:
+      tags: [Fields]
+      summary: Listar slots del campo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Slots del campo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /fields/{id}/videos:
+    get:
+      tags: [Fields]
+      summary: Listar videos del campo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Videos del campo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FieldVideo"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /slots:
+    get:
+      tags: [Slots]
+      summary: Listar todos los slots
+      responses:
+        "200":
+          description: Lista de slots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Slots]
+      summary: Crear slot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotInput"
+      responses:
+        "201":
+          description: Slot creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /slots/{id}:
+    get:
+      tags: [Slots]
+      summary: Obtener slot por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Slot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Slots]
+      summary: Actualizar slot
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SlotUpdateRequest"
+      responses:
+        "200":
+          description: Slot actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Slot"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Slots]
+      summary: Eliminar slot
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Slot eliminado
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /slots/{id}/field:
+    get:
+      tags: [Slots]
+      summary: Listar slots por field ID
+      description: >
+        En esta ruta, `id` representa el ID del campo (fieldId), aunque el
+        parametro se llame `id`.
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Lista de slots para el campo
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Slot"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /reservations:
+    get:
+      tags: [Reservations]
+      summary: Listar reservas
+      responses:
+        "200":
+          description: Lista de reservas
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Reservations]
+      summary: Crear reserva
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationInput"
+      responses:
+        "201":
+          description: Reserva creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /reservations/{id}:
+    get:
+      tags: [Reservations]
+      summary: Obtener reserva por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Reserva
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Reservations]
+      summary: Actualizar reserva
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReservationUpdateRequest"
+      responses:
+        "200":
+          description: Reserva actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reservation"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Reservations]
+      summary: Eliminar reserva
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: Reserva eliminada
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /reservations/user/{id}:
+    get:
+      tags: [Reservations]
+      summary: Listar reservas por usuario
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Reservas del usuario
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reservation"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos:
+    post:
+      tags: [Videos]
+      summary: Crear registro de video
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoCreateRequest"
+      responses:
+        "201":
+          description: Video creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos/{id}:
+    put:
+      tags: [Videos]
+      summary: Actualizar video
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoUpdateRequest"
+      responses:
+        "200":
+          description: Video actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Video"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /videos/upload:
+    post:
+      tags: [Videos]
+      summary: Generar URL firmada para subir video a S3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObjectKeyRequest"
+      responses:
+        "200":
+          description: URL firmada de subida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3UploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos/{videoId}/analyze:
+    post:
+      tags: [Videos]
+      summary: Ejecutar analisis AI sobre video
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resultado del analisis
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /video-stats:
+    post:
+      tags: [Video Stats]
+      summary: Crear estadisticas de video
+      description: >
+        Este endpoint espera `videoId`, `statistics` y `generatedByModel` en el
+        body, segun el controlador actual.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoStatsCreateRequest"
+      responses:
+        "201":
+          description: Estadisticas creadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoStats"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /video-stats/{videoId}:
+    get:
+      tags: [Video Stats]
+      summary: Obtener estadisticas por videoId
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estadisticas del video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoStats"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Video Stats]
+      summary: Actualizar estadisticas por videoId
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoStatsUpdateRequest"
+      responses:
+        "200":
+          description: Estadisticas actualizadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoStats"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    delete:
+      tags: [Video Stats]
+      summary: Eliminar estadisticas por videoId
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estadisticas eliminadas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /images/upload:
+    post:
+      tags: [Images]
+      summary: Generar URL firmada para subir imagen a S3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObjectKeyRequest"
+      responses:
+        "200":
+          description: URL firmada de subida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3UploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /images/get:
+    post:
+      tags: [Images]
+      summary: Generar URL firmada para descargar imagen de S3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObjectKeyRequest"
+      responses:
+        "200":
+          description: URL firmada de descarga
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3DownloadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /concerts:
+    get:
+      tags: [Concerts]
+      summary: Listar conciertos
+      responses:
+        "200":
+          description: Lista de conciertos
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Concert"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Concerts]
+      summary: Crear concierto
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConcertInput"
+      responses:
+        "201":
+          description: Concierto creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Concert"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /concerts/{id}:
+    get:
+      tags: [Concerts]
+      summary: Obtener concierto por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Concierto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Concert"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    put:
+      tags: [Concerts]
+      summary: Actualizar concierto
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConcertUpdateRequest"
+      responses:
+        "200":
+          description: Concierto actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Concert"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+    delete:
+      tags: [Concerts]
+      summary: Eliminar concierto
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Concierto eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  parameters:
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Solicitud invalida
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Recurso no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    InternalError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        firstName:
+          type: string
+        lastName:
+          type: string
+        password:
+          type: string
+        profileImage:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    UserRegisterRequest:
+      type: object
+      required: [username, email, password, firstName, lastName]
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+
+    UserUpdateRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        profileImage:
+          type: string
+        role:
+          type: string
+          enum: [user, admin]
+
+    UserLoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        token:
+          type: string
+
+    FieldLocation:
+      type: object
+      properties:
+        name:
+          type: string
+        lat:
+          type: number
+        long:
+          type: number
+
+    Field:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+          enum: [football, padel, tennis]
+        location:
+          $ref: "#/components/schemas/FieldLocation"
+        pricePerHour:
+          type: number
+        imageS3Key:
+          type: string
+        imageUrl:
+          type: string
+        owner:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    FieldInput:
+      type: object
+      required: [name, type, pricePerHour, owner]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [football, padel, tennis]
+        location:
+          $ref: "#/components/schemas/FieldLocation"
+        pricePerHour:
+          type: number
+        imageS3Key:
+          type: string
+        owner:
+          type: string
+
+    FieldUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [football, padel, tennis]
+        location:
+          $ref: "#/components/schemas/FieldLocation"
+        pricePerHour:
+          type: number
+        imageS3Key:
+          type: string
+        owner:
+          type: string
+
+    Slot:
+      type: object
+      properties:
+        _id:
+          type: string
+        field:
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: true
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        isAvailable:
+          type: boolean
+        value:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    SlotInput:
+      type: object
+      required: [field, startTime, endTime, value]
+      properties:
+        field:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        isAvailable:
+          type: boolean
+        value:
+          type: number
+
+    SlotUpdateRequest:
+      type: object
+      properties:
+        field:
+          type: string
+        startTime:
+          type: string
+          format: date-time
+        endTime:
+          type: string
+          format: date-time
+        isAvailable:
+          type: boolean
+        value:
+          type: number
+
+    Reservation:
+      type: object
+      properties:
+        _id:
+          type: string
+        user:
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: true
+        slot:
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ReservationInput:
+      type: object
+      required: [user, slot]
+      properties:
+        user:
+          type: string
+        slot:
+          type: string
+
+    ReservationUpdateRequest:
+      type: object
+      properties:
+        user:
+          type: string
+        slot:
+          type: string
+
+    Video:
+      type: object
+      properties:
+        _id:
+          type: string
+        fieldId:
+          type: string
+        slotId:
+          type: string
+        s3Key:
+          type: string
+        s3Url:
+          type: string
+        googleAiFileId:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        videoUrl:
+          oneOf:
+            - type: string
+            - type: object
+              additionalProperties: true
+
+    FieldVideo:
+      type: object
+      properties:
+        _id:
+          type: string
+        fieldId:
+          type: string
+        s3Key:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        videoUrl:
+          type: string
+
+    VideoCreateRequest:
+      type: object
+      required: [fieldId, slotId, s3Key]
+      properties:
+        fieldId:
+          type: string
+        slotId:
+          type: string
+        matchId:
+          type: string
+        s3Key:
+          type: string
+
+    VideoUpdateRequest:
+      type: object
+      properties:
+        fieldId:
+          type: string
+        slotId:
+          type: string
+        s3Key:
+          type: string
+        s3Url:
+          type: string
+        googleAiFileId:
+          type: string
+
+    ObjectKeyRequest:
+      type: object
+      required: [objectKey]
+      properties:
+        objectKey:
+          type: string
+
+    S3UploadResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        s3Url:
+          type: string
+        objectKey:
+          type: string
+
+    S3DownloadResponse:
+      type: object
+      properties:
+        downloadUrl:
+          type: string
+        objectKey:
+          type: string
+
+    TeamStats:
+      type: object
+      properties:
+        teamName:
+          type: string
+        stats:
+          type: object
+          additionalProperties:
+            type: number
+
+    VideoStats:
+      type: object
+      properties:
+        _id:
+          type: string
+        videoId:
+          type: string
+        sportType:
+          type: string
+          enum: [football, padel, tennis]
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStats"
+        summary:
+          type: string
+        generatedByModel:
+          type: string
+          enum:
+            - manual
+            - OpenPose
+            - YOLOv8
+            - DeepSportAnalyzer
+            - BallTrackNet
+            - Gemini-2.0-Flash
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VideoStatsCreateRequest:
+      type: object
+      required: [videoId, statistics, generatedByModel]
+      properties:
+        videoId:
+          type: string
+        statistics:
+          type: object
+          required: [sportType]
+          properties:
+            sportType:
+              type: string
+              enum: [football, padel, tennis]
+            teams:
+              type: array
+              items:
+                $ref: "#/components/schemas/TeamStats"
+            summary:
+              type: string
+        generatedByModel:
+          type: string
+          enum:
+            - manual
+            - OpenPose
+            - YOLOv8
+            - DeepSportAnalyzer
+            - BallTrackNet
+            - Gemini-2.0-Flash
+
+    VideoStatsUpdateRequest:
+      type: object
+      properties:
+        sportType:
+          type: string
+          enum: [football, padel, tennis]
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStats"
+        summary:
+          type: string
+        generatedByModel:
+          type: string
+          enum:
+            - manual
+            - OpenPose
+            - YOLOv8
+            - DeepSportAnalyzer
+            - BallTrackNet
+            - Gemini-2.0-Flash
+
+    ConcertLocation:
+      type: object
+      required: [latitude, longitude]
+      properties:
+        latitude:
+          type: number
+        longitude:
+          type: number
+
+    Concert:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        ensemble:
+          type: string
+        repertoire:
+          type: array
+          items:
+            type: string
+        date:
+          type: string
+          format: date-time
+        location:
+          $ref: "#/components/schemas/ConcertLocation"
+        venue:
+          type: string
+        ticketPrice:
+          type: number
+        description:
+          type: string
+        imageUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    ConcertInput:
+      type: object
+      required:
+        [name, ensemble, repertoire, date, location, venue, ticketPrice]
+      properties:
+        name:
+          type: string
+        ensemble:
+          type: string
+        repertoire:
+          type: array
+          items:
+            type: string
+        date:
+          type: string
+          format: date-time
+        location:
+          $ref: "#/components/schemas/ConcertLocation"
+        venue:
+          type: string
+        ticketPrice:
+          type: number
+        description:
+          type: string
+        imageUrl:
+          type: string
+
+    ConcertUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        ensemble:
+          type: string
+        repertoire:
+          type: array
+          items:
+            type: string
+        date:
+          type: string
+          format: date-time
+        location:
+          $ref: "#/components/schemas/ConcertLocation"
+        venue:
+          type: string
+        ticketPrice:
+          type: number
+        description:
+          type: string
+        imageUrl:
+          type: string

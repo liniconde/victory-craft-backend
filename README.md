@@ -45,6 +45,7 @@ AWS_SECRET_ACCESS_KEY = saddasasada
 AWS_REGION=us-east-1
 BUCKET_NAME=tu-bucket
 MONGO_URI=mongodb+srv://xxxxxxxxx
+MONGO_URI_3=mongodb+srv://xxxxxxxxx
 ```
 
 ### **4️⃣ Ejecutar el backend**
@@ -54,6 +55,29 @@ npm run dev
 ```
 
 El backend se ejecutará en `http://localhost:5001`
+
+### **5️⃣ Ver Swagger visualmente con Docker**
+
+Se agregaron:
+- `Dockerfile` para el backend.
+- `docker-compose.yml` para levantar backend + Swagger UI.
+- `contract/swagger.yaml` como contrato OpenAPI.
+
+Ejecuta:
+
+```bash
+docker compose up --build
+```
+
+Luego abre:
+- Backend: `http://localhost:5001`
+- Swagger UI: `http://localhost:8080`
+
+Para detener:
+
+```bash
+docker compose down
+```
 
 ---
 
