@@ -698,10 +698,14 @@ paths:
   /video-stats:
     post:
       tags: [Video Stats]
-      summary: Crear estadisticas de video
+      summary: Crear o actualizar estadisticas de video (unificado manual/AI)
       description: >
-        Este endpoint espera `videoId`, `statistics` y `generatedByModel` en el
-        body, segun el controlador actual.
+        Acepta payload legacy (`statistics.sportType`) y payload unificado con
+        `sportType`, `events`, `teamAName/teamBName`, `teams`, `matchStats`.
+        Si hay `events`, el backend recalcula `matchStats` y `teams` para
+        mantener consistencia. `matchStats` incluye globales por partido
+        (passes, shots, goals, fouls, others) y `teams[].stats` incluye
+        estadisticas por equipo.
       requestBody:
         required: true
         content:
@@ -1243,7 +1247,7 @@ components:
           enum: [field, library]
         sportType:
           type: string
-          enum: [football, padel, tennis]
+          enum: [football, padel, tennis, basketball, other]
         s3Key:
           type: string
         s3Url:
@@ -1295,7 +1299,7 @@ components:
           type: string
         sportType:
           type: string
-          enum: [football, padel, tennis]
+          enum: [football, padel, tennis, basketball, other]
         s3Url:
           type: string
 
@@ -1350,7 +1354,7 @@ components:
           enum: [field, library]
         sportType:
           type: string
-          enum: [football, padel, tennis]
+          enum: [football, padel, tennis, basketball, other]
         s3Key:
           type: string
         s3Url:
@@ -1402,11 +1406,28 @@ components:
           type: string
         sportType:
           type: string
-          enum: [football, padel, tennis]
+          enum: [football, padel, tennis, basketball, other]
+        teamAName:
+          type: string
+        teamBName:
+          type: string
         teams:
           type: array
           items:
             $ref: "#/components/schemas/TeamStats"
+        matchStats:
+          type: object
+          properties:
+            passes:
+              $ref: "#/components/schemas/MatchMetric"
+            shots:
+              $ref: "#/components/schemas/MatchMetric"
+            goals:
+              $ref: "#/components/schemas/MatchMetric"
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualEvent"
         summary:
           type: string
         generatedByModel:
@@ -1418,6 +1439,39 @@ components:
             - DeepSportAnalyzer
             - BallTrackNet
             - Gemini-2.0-Flash
+            - custom
+        statistics:
+          type: object
+          properties:
+            sportType:
+              type: string
+            teams:
+              type: array
+              items:
+                $ref: "#/components/schemas/TeamStats"
+            summary:
+              type: string
+            matchStats:
+              type: object
+              properties:
+                passes:
+                  $ref: "#/components/schemas/MatchMetric"
+                shots:
+                  $ref: "#/components/schemas/MatchMetric"
+                goals:
+                  $ref: "#/components/schemas/MatchMetric"
+                fouls:
+                  $ref: "#/components/schemas/MatchMetric"
+                others:
+                  $ref: "#/components/schemas/MatchMetric"
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/ManualEvent"
+            teamAName:
+              type: string
+            teamBName:
+              type: string
         createdAt:
           type: string
           format: date-time
@@ -1427,21 +1481,71 @@ components:
 
     VideoStatsCreateRequest:
       type: object
-      required: [videoId, statistics, generatedByModel]
+      required: [videoId]
       properties:
         videoId:
           type: string
+        sportType:
+          type: string
+          enum: [football, padel, tennis, basketball, other]
+        teamAName:
+          type: string
+        teamBName:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualEvent"
+        teams:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamStats"
+        matchStats:
+          type: object
+          properties:
+            passes:
+              $ref: "#/components/schemas/MatchMetric"
+            shots:
+              $ref: "#/components/schemas/MatchMetric"
+            goals:
+              $ref: "#/components/schemas/MatchMetric"
+            fouls:
+              $ref: "#/components/schemas/MatchMetric"
+            others:
+              $ref: "#/components/schemas/MatchMetric"
+        summary:
+          type: string
         statistics:
           type: object
-          required: [sportType]
           properties:
             sportType:
               type: string
-              enum: [football, padel, tennis]
+              enum: [football, padel, tennis, basketball, other]
             teams:
               type: array
               items:
                 $ref: "#/components/schemas/TeamStats"
+            matchStats:
+              type: object
+              properties:
+                passes:
+                  $ref: "#/components/schemas/MatchMetric"
+                shots:
+                  $ref: "#/components/schemas/MatchMetric"
+                goals:
+                  $ref: "#/components/schemas/MatchMetric"
+                fouls:
+                  $ref: "#/components/schemas/MatchMetric"
+                others:
+                  $ref: "#/components/schemas/MatchMetric"
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/ManualEvent"
+            teamAName:
+              type: string
+            teamBName:
+              type: string
             summary:
               type: string
         generatedByModel:
@@ -1453,19 +1557,74 @@ components:
             - DeepSportAnalyzer
             - BallTrackNet
             - Gemini-2.0-Flash
+            - custom
 
     VideoStatsUpdateRequest:
       type: object
       properties:
         sportType:
           type: string
-          enum: [football, padel, tennis]
+          enum: [football, padel, tennis, basketball, other]
+        teamAName:
+          type: string
+        teamBName:
+          type: string
+        events:
+          type: array
+          items:
+            $ref: "#/components/schemas/ManualEvent"
         teams:
           type: array
           items:
             $ref: "#/components/schemas/TeamStats"
+        matchStats:
+          type: object
+          properties:
+            passes:
+              $ref: "#/components/schemas/MatchMetric"
+            shots:
+              $ref: "#/components/schemas/MatchMetric"
+            goals:
+              $ref: "#/components/schemas/MatchMetric"
+            fouls:
+              $ref: "#/components/schemas/MatchMetric"
+            others:
+              $ref: "#/components/schemas/MatchMetric"
         summary:
           type: string
+        statistics:
+          type: object
+          properties:
+            sportType:
+              type: string
+              enum: [football, padel, tennis, basketball, other]
+            teams:
+              type: array
+              items:
+                $ref: "#/components/schemas/TeamStats"
+            matchStats:
+              type: object
+              properties:
+                passes:
+                  $ref: "#/components/schemas/MatchMetric"
+                shots:
+                  $ref: "#/components/schemas/MatchMetric"
+                goals:
+                  $ref: "#/components/schemas/MatchMetric"
+                fouls:
+                  $ref: "#/components/schemas/MatchMetric"
+                others:
+                  $ref: "#/components/schemas/MatchMetric"
+            events:
+              type: array
+              items:
+                $ref: "#/components/schemas/ManualEvent"
+            teamAName:
+              type: string
+            teamBName:
+              type: string
+            summary:
+              type: string
         generatedByModel:
           type: string
           enum:
@@ -1475,6 +1634,37 @@ components:
             - DeepSportAnalyzer
             - BallTrackNet
             - Gemini-2.0-Flash
+            - custom
+
+    ManualEvent:
+      type: object
+      required: [id, time, type, team]
+      properties:
+        id:
+          type: string
+        time:
+          type: number
+          minimum: 0
+        type:
+          type: string
+          enum: [pass, shot, goal, foul, other]
+        team:
+          type: string
+          enum: [A, B]
+        note:
+          type: string
+          maxLength: 500
+
+    MatchMetric:
+      type: object
+      required: [total, teamA, teamB]
+      properties:
+        total:
+          type: number
+        teamA:
+          type: number
+        teamB:
+          type: number
 
     ConcertLocation:
       type: object

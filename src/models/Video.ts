@@ -5,7 +5,7 @@ interface IVideo extends Document {
   fieldId?: mongoose.Types.ObjectId; // Referencia a Field (opcional para videos de biblioteca)
   slotId?: mongoose.Types.ObjectId;
   videoType: "field" | "library";
-  sportType?: "football" | "padel" | "tennis";
+  sportType?: "football" | "padel" | "tennis" | "basketball" | "other";
   s3Key: string; // Identificador en S3
   s3Url?: string; // URL pública o firmada de S3
   googleAiFileId?: string;
@@ -25,7 +25,7 @@ const VideoSchema = new Schema<IVideo>(
     },
     sportType: {
       type: String,
-      enum: ["football", "padel", "tennis"],
+      enum: ["football", "padel", "tennis", "basketball", "other"],
       required: false,
     },
     s3Key: { type: String, required: true },

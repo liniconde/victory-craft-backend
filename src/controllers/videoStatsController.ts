@@ -4,7 +4,16 @@ import {
   getVideoStatsByVideoId,
   updateVideoStats,
   deleteVideoStats,
+  VideoStatsServiceError,
 } from "../services/videoStatsService";
+
+const handleVideoStatsError = (res: Response, error: any) => {
+  if (error instanceof VideoStatsServiceError) {
+    res.status(error.status).json({ message: error.message, code: error.code });
+    return;
+  }
+  res.status(500).json({ message: error.message });
+};
 
 /**
  * 📌 Crea estadísticas para un video.
@@ -12,24 +21,21 @@ import {
  */
 export const handleCreateVideoStats = async (req: Request, res: Response) => {
   try {
-    const { videoId, statistics, generatedByModel } = req.body;
+    const { videoId } = req.body;
+    const sportType = req.body?.sportType || req.body?.statistics?.sportType;
 
-    if (!videoId || !statistics || !statistics.sportType || !generatedByModel) {
+    if (!videoId || !sportType) {
       res.status(400).json({
         message:
-          "videoId, statistics.sportType (and optional statistics.teams), and generatedByModel are required.",
+          "videoId and sportType are required (sportType can be inside statistics.sportType for backward compatibility).",
       });
       return;
     }
 
-    const stats = await createVideoStats({
-      videoId,
-      statistics,
-      generatedByModel,
-    });
+    const stats = await createVideoStats(req.body);
     res.status(201).json(stats);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleVideoStatsError(res, error);
   }
 };
 
@@ -41,13 +47,9 @@ export const handleGetVideoStats = async (req: Request, res: Response) => {
   try {
     const { videoId } = req.params;
     const stats = await getVideoStatsByVideoId(videoId as string);
-    if (!stats) {
-      res.status(404).json({ message: "Stats not found" });
-      return;
-    }
     res.status(200).json(stats);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleVideoStatsError(res, error);
   }
 };
 
@@ -59,13 +61,9 @@ export const handleUpdateVideoStats = async (req: Request, res: Response) => {
   try {
     const { videoId } = req.params;
     const stats = await updateVideoStats(videoId as string, req.body);
-    if (!stats) {
-      res.status(404).json({ message: "Stats not found" });
-      return;
-    }
     res.status(200).json(stats);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleVideoStatsError(res, error);
   }
 };
 
@@ -78,6 +76,6 @@ export const handleDeleteVideoStats = async (req: Request, res: Response) => {
     const result = await deleteVideoStats(videoId as string);
     res.status(200).json(result);
   } catch (error: any) {
-    res.status(500).json({ message: error.message });
+    handleVideoStatsError(res, error);
   }
 };

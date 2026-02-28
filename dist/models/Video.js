@@ -46,7 +46,7 @@ const VideoSchema = new mongoose_1.Schema({
     },
     sportType: {
         type: String,
-        enum: ["football", "padel", "tennis"],
+        enum: ["football", "padel", "tennis", "basketball", "other"],
         required: false,
     },
     s3Key: { type: String, required: true },

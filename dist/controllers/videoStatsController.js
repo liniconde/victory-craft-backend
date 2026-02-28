@@ -11,28 +11,33 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleDeleteVideoStats = exports.handleUpdateVideoStats = exports.handleGetVideoStats = exports.handleCreateVideoStats = void 0;
 const videoStatsService_1 = require("../services/videoStatsService");
+const handleVideoStatsError = (res, error) => {
+    if (error instanceof videoStatsService_1.VideoStatsServiceError) {
+        res.status(error.status).json({ message: error.message, code: error.code });
+        return;
+    }
+    res.status(500).json({ message: error.message });
+};
 /**
  * 📌 Crea estadísticas para un video.
  * Requiere: `videoId`, `statistics` (incluye `teams`), `generatedByModel`.
  */
 const handleCreateVideoStats = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
     try {
-        const { videoId, statistics, generatedByModel } = req.body;
-        if (!videoId || !statistics || !statistics.sportType || !generatedByModel) {
+        const { videoId } = req.body;
+        const sportType = ((_a = req.body) === null || _a === void 0 ? void 0 : _a.sportType) || ((_c = (_b = req.body) === null || _b === void 0 ? void 0 : _b.statistics) === null || _c === void 0 ? void 0 : _c.sportType);
+        if (!videoId || !sportType) {
             res.status(400).json({
-                message: "videoId, statistics.sportType (and optional statistics.teams), and generatedByModel are required.",
+                message: "videoId and sportType are required (sportType can be inside statistics.sportType for backward compatibility).",
             });
             return;
         }
-        const stats = yield (0, videoStatsService_1.createVideoStats)({
-            videoId,
-            statistics,
-            generatedByModel,
-        });
+        const stats = yield (0, videoStatsService_1.createVideoStats)(req.body);
         res.status(201).json(stats);
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        handleVideoStatsError(res, error);
     }
 });
 exports.handleCreateVideoStats = handleCreateVideoStats;
@@ -44,14 +49,10 @@ const handleGetVideoStats = (req, res) => __awaiter(void 0, void 0, void 0, func
     try {
         const { videoId } = req.params;
         const stats = yield (0, videoStatsService_1.getVideoStatsByVideoId)(videoId);
-        if (!stats) {
-            res.status(404).json({ message: "Stats not found" });
-            return;
-        }
         res.status(200).json(stats);
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        handleVideoStatsError(res, error);
     }
 });
 exports.handleGetVideoStats = handleGetVideoStats;
@@ -63,14 +64,10 @@ const handleUpdateVideoStats = (req, res) => __awaiter(void 0, void 0, void 0, f
     try {
         const { videoId } = req.params;
         const stats = yield (0, videoStatsService_1.updateVideoStats)(videoId, req.body);
-        if (!stats) {
-            res.status(404).json({ message: "Stats not found" });
-            return;
-        }
         res.status(200).json(stats);
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        handleVideoStatsError(res, error);
     }
 });
 exports.handleUpdateVideoStats = handleUpdateVideoStats;
@@ -84,7 +81,7 @@ const handleDeleteVideoStats = (req, res) => __awaiter(void 0, void 0, void 0, f
         res.status(200).json(result);
     }
     catch (error) {
-        res.status(500).json({ message: error.message });
+        handleVideoStatsError(res, error);
     }
 });
 exports.handleDeleteVideoStats = handleDeleteVideoStats;

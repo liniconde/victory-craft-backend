@@ -34,6 +34,22 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const MatchMetricSchema = new mongoose_1.Schema({
+    total: { type: Number, default: 0, required: true },
+    teamA: { type: Number, default: 0, required: true },
+    teamB: { type: Number, default: 0, required: true },
+}, { _id: false });
+const ManualEventSchema = new mongoose_1.Schema({
+    id: { type: String, required: true },
+    time: { type: Number, required: true, min: 0 },
+    type: {
+        type: String,
+        enum: ["pass", "shot", "goal", "foul", "other"],
+        required: true,
+    },
+    team: { type: String, enum: ["A", "B"], required: true },
+    note: { type: String, maxlength: 500 },
+}, { _id: false });
 const VideoStatsSchema = new mongoose_1.Schema({
     videoId: {
         type: mongoose_1.Schema.Types.ObjectId,
@@ -43,15 +59,30 @@ const VideoStatsSchema = new mongoose_1.Schema({
     },
     sportType: {
         type: String,
-        enum: ["football", "padel", "tennis"],
+        enum: ["football", "padel", "tennis", "basketball", "other"],
         required: true,
     },
+    teamAName: { type: String, required: false },
+    teamBName: { type: String, required: false },
     teams: [
         {
+            teamKey: { type: String, enum: ["A", "B"], required: false },
             teamName: { type: String, required: true },
             stats: { type: Object, default: {} },
         },
     ],
+    matchStats: {
+        passes: { type: MatchMetricSchema, required: false },
+        shots: { type: MatchMetricSchema, required: false },
+        goals: { type: MatchMetricSchema, required: false },
+        fouls: { type: MatchMetricSchema, required: false },
+        others: { type: MatchMetricSchema, required: false },
+    },
+    events: {
+        type: [ManualEventSchema],
+        required: false,
+        default: undefined,
+    },
     summary: { type: String, default: "" },
     generatedByModel: {
         type: String,
@@ -62,6 +93,7 @@ const VideoStatsSchema = new mongoose_1.Schema({
             "DeepSportAnalyzer",
             "BallTrackNet",
             "Gemini-2.0-Flash",
+            "custom",
         ],
         required: true,
         default: "manual",

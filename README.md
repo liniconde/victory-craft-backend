@@ -121,6 +121,47 @@ Si usas VS Code, abre ese archivo y usa "Open Preview" para ver el diagrama Merm
   - `https://victory-craft-front-spa.vercel.app`
   - `http://localhost:5173`
 
+### **8️⃣ Estadísticas de video unificadas (manual + AI)**
+
+#### Endpoints
+
+- Upsert stats:
+  - `POST /video-stats`
+- Obtener stats:
+  - `GET /video-stats/:videoId`
+- Actualizar stats:
+  - `PUT /video-stats/:videoId`
+
+#### cURL crear/actualizar
+
+```bash
+curl -X POST "http://localhost:5001/video-stats" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "videoId": "67d123abc4567890def12345",
+    "sportType": "football",
+    "teamAName": "Team A",
+    "teamBName": "Team B",
+    "events": [
+      { "id": "evt-1", "time": 35.2, "type": "pass", "team": "A", "note": "Salida limpia" },
+      { "id": "evt-2", "time": 48.7, "type": "shot", "team": "B" },
+      { "id": "evt-3", "time": 61.4, "type": "goal", "team": "A" }
+    ],
+    "manualStats": {
+      "passes": { "total": 999, "teamA": 999, "teamB": 999 }
+    }
+  }'
+```
+
+#### cURL consultar
+
+```bash
+curl "http://localhost:5001/video-stats/67d123abc4567890def12345"
+```
+
+> Nota: payload legacy con `statistics.sportType` sigue soportado.
+> Si se envian `events`, backend recalcula `matchStats` y `teams` para consistencia.
+
 ---
 
 ## 📌 **🛠️ Contribuir**
