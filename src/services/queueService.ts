@@ -25,3 +25,43 @@ export const sendAnalysisJobToQueue = async (payload: Record<string, any>) => {
 
   return response.MessageId || "";
 };
+
+export const receiveAnalysisJobsMessages = async (params?: {
+  maxNumberOfMessages?: number;
+  waitTimeSeconds?: number;
+  visibilityTimeout?: number;
+}) => {
+  const queueUrl = process.env.ANALYSIS_JOBS_SQS_URL;
+  if (!queueUrl) {
+    throw new Error("ANALYSIS_JOBS_SQS_URL is not configured");
+  }
+
+  const response = await sqs
+    .receiveMessage({
+      QueueUrl: queueUrl,
+      MaxNumberOfMessages: params?.maxNumberOfMessages || 5,
+      WaitTimeSeconds: params?.waitTimeSeconds || 20,
+      VisibilityTimeout: params?.visibilityTimeout || 60,
+      MessageAttributeNames: ["All"],
+    })
+    .promise();
+
+  return response.Messages || [];
+};
+
+export const deleteAnalysisJobsMessage = async (receiptHandle: string) => {
+  const queueUrl = process.env.ANALYSIS_JOBS_SQS_URL;
+  if (!queueUrl) {
+    throw new Error("ANALYSIS_JOBS_SQS_URL is not configured");
+  }
+  if (!receiptHandle) {
+    throw new Error("receiptHandle is required");
+  }
+
+  await sqs
+    .deleteMessage({
+      QueueUrl: queueUrl,
+      ReceiptHandle: receiptHandle,
+    })
+    .promise();
+};

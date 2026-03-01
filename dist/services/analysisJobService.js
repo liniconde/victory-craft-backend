@@ -45,7 +45,7 @@ const createPromptAnalysisJob = (videoId, payload) => __awaiter(void 0, void 0, 
         throw new AnalysisJobServiceError(404, "video_not_found", "Video not found");
     }
     const analysisType = payload.analysisType || "agent_prompt";
-    const input = Object.assign({ prompt: payload.prompt || "" }, (payload.input || {}));
+    const input = Object.assign(Object.assign({ prompt: payload.prompt || "" }, (payload.sportType ? { sportType: payload.sportType } : {})), (payload.input || {}));
     const job = yield AnalysisJob_1.default.create({
         videoId,
         analysisType,

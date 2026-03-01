@@ -11,6 +11,7 @@ import {
   handleCreateAnalyzeVideoJob,
   handleGetAnalyzeVideoJobStatus,
 } from "../controllers/analysisJobController";
+import { handleListVideoAnalysisRecords } from "../controllers/videoAnalysisRecordController";
 
 const router = express.Router();
 
@@ -22,6 +23,7 @@ router.put("/:id", handleUpdateVideo);
 router.post("/upload", handleUploadVideo);
 router.post("/:id/analyzeVideo", handleCreateAnalyzeVideoJob);
 router.get("/:id/analyzeVideo/:jobId/status", handleGetAnalyzeVideoJobStatus);
+router.get("/:id/analysis-results", handleListVideoAnalysisRecords);
 router.post("/:videoId/analyze", analyzeVideoController);
 
 export default router;

@@ -7,6 +7,7 @@ import { sendAnalysisJobToQueue } from "./queueService";
 type AnalyzePromptInput = {
   analysisType?: "agent_prompt" | "custom";
   prompt?: string;
+  sportType?: "football" | "padel" | "tennis" | "basketball" | "other";
   input?: Record<string, any>;
 };
 
@@ -54,6 +55,7 @@ export const createPromptAnalysisJob = async (
   const analysisType = payload.analysisType || "agent_prompt";
   const input = {
     prompt: payload.prompt || "",
+    ...(payload.sportType ? { sportType: payload.sportType } : {}),
     ...(payload.input || {}),
   };
 

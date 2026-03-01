@@ -10,6 +10,18 @@ services:
       - .env
     restart: unless-stopped
 
+  analysis-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: victory-craft-analysis-worker
+    command: ["node", "dist/workers/analysisJobsConsumer.js"]
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   swagger-ui:
     image: swaggerapi/swagger-ui:latest
     container_name: victory-craft-swagger

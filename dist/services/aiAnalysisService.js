@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeVideo = void 0;
+exports.analyzeVideoWithPrompt = exports.analyzeVideo = void 0;
 const generative_ai_1 = require("@google/generative-ai");
 const server_1 = require("@google/generative-ai/server");
 // Polyfill `Headers` for environments where Fetch API is not available (Node <18)
@@ -33,6 +33,7 @@ const path_1 = __importDefault(require("path"));
 const os_1 = __importDefault(require("os"));
 const https_1 = __importDefault(require("https"));
 const Video_1 = __importDefault(require("../models/Video"));
+const Field_1 = __importDefault(require("../models/Field"));
 const s3FilesService_1 = require("./s3FilesService");
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) {
@@ -72,29 +73,53 @@ const downloadFile = (url, destPath) => {
  */
 const VideoStats_1 = __importDefault(require("../models/VideoStats"));
 const football_1 = require("../utils/prompts/football");
-const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const tryParseJson = (text) => {
+    try {
+        return JSON.parse(text);
+    }
+    catch (_error) {
+        return null;
+    }
+};
+const analyzeVideoInternal = (videoId, options) => __awaiter(void 0, void 0, void 0, function* () {
     let localFilePath = "";
     let uploadResult = null;
     let fileUri = "";
     let fileMimeType = "";
     try {
-        // 1. Get Video Metadata and Populate Field
-        const video = yield Video_1.default.findById(videoId).populate("fieldId");
+        // 1. Get video metadata and resolve sport type from field (if linked)
+        const video = yield Video_1.default.findById(videoId);
         if (!video) {
             throw new Error("Video not found");
         }
-        const fieldType = ((_a = video.fieldId) === null || _a === void 0 ? void 0 : _a.type) || video.sportType;
-        if (!fieldType) {
+        let fieldTypeFromField;
+        if (video.fieldId) {
+            const field = yield Field_1.default.findById(video.fieldId).select("type");
+            fieldTypeFromField = field === null || field === void 0 ? void 0 : field.type;
+        }
+        const fieldType = (options === null || options === void 0 ? void 0 : options.sportTypeOverride) || fieldTypeFromField || video.sportType;
+        const requiresSportType = !(options === null || options === void 0 ? void 0 : options.promptOverride);
+        if (!fieldType && requiresSportType) {
             throw new Error("Sport type could not be determined. Associate fieldId or set video.sportType.");
         }
-        console.log(`Analyzing video for sport: ${fieldType}`);
+        const analysisMode = (options === null || options === void 0 ? void 0 : options.promptOverride) ? "prompt_driven" : "default_stats";
+        console.log(JSON.stringify({
+            event: "video_analysis_started",
+            jobId: (options === null || options === void 0 ? void 0 : options.jobId) || null,
+            videoId,
+            sportType: fieldType || "unknown",
+            analysisMode,
+            at: new Date().toISOString(),
+        }));
         // Select Prompt based on sport
         let prompt = "";
         // Todo: Get duration from video metadata or external service if possible.
         // For now, prompt generic duration or we could assume 60s as max limit.
         const estimatedDuration = 60;
-        if (fieldType === "football") {
+        if ((options === null || options === void 0 ? void 0 : options.promptOverride) && options.promptOverride.trim()) {
+            prompt = options.promptOverride.trim();
+        }
+        else if (fieldType === "football") {
             prompt = (0, football_1.getFootballPrompt)(estimatedDuration);
         }
         else {
@@ -162,10 +187,11 @@ const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* ()
         console.log("Generating content...");
         // 6. Generate Content
         // Using gemini-flash-latest as requested/verified
-        const model = genAI.getGenerativeModel({
-            model: "gemini-flash-latest",
-            generationConfig: { responseMimeType: "application/json" },
-        });
+        const modelConfig = { model: "gemini-flash-latest" };
+        if ((options === null || options === void 0 ? void 0 : options.expectJson) !== false) {
+            modelConfig.generationConfig = { responseMimeType: "application/json" };
+        }
+        const model = genAI.getGenerativeModel(modelConfig);
         const result = yield model.generateContent([
             {
                 fileData: {
@@ -178,15 +204,20 @@ const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* ()
         const response = yield result.response;
         const textResponse = response.text();
         // 7. Parse and Save Stats
-        try {
-            const statsJson = JSON.parse(textResponse);
+        const parsed = tryParseJson(textResponse);
+        const persistToVideoStats = (options === null || options === void 0 ? void 0 : options.persistToVideoStats) !== false;
+        if (persistToVideoStats) {
+            if (!parsed) {
+                console.error("Error parsing JSON response from Gemini:", textResponse);
+                throw new Error("Failed to parse AI response as JSON");
+            }
             // Save to VideoStats
             const statsData = {
                 videoId: video._id,
                 // Try to pick a summary field from the model response if present
-                summary: statsJson.summary || statsJson.playSummary || "",
+                summary: parsed.summary || parsed.playSummary || "",
                 sportType: fieldType,
-                teams: statsJson.teams || [],
+                teams: parsed.teams || [],
                 generatedByModel: "Gemini-2.0-Flash",
             };
             // Upsert stats
@@ -194,12 +225,15 @@ const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* ()
                 upsert: true,
                 new: true,
             });
-            return Object.assign(Object.assign({}, statsJson), { message: "Stats generated and saved successfully." });
+            return Object.assign(Object.assign({}, parsed), { message: "Stats generated and saved successfully." });
         }
-        catch (parseError) {
-            console.error("Error parsing JSON response from Gemini:", textResponse);
-            throw new Error("Failed to parse AI response as JSON");
-        }
+        return {
+            output: parsed || { text: textResponse },
+            rawText: textResponse,
+            sportType: fieldType || "other",
+            model: "gemini-flash-latest",
+            message: "Analysis generated successfully.",
+        };
     }
     catch (error) {
         console.error("Error in AI analysis:", error);
@@ -214,5 +248,21 @@ const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* ()
         }
     }
 });
+const analyzeVideo = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
+    return analyzeVideoInternal(videoId, {
+        persistToVideoStats: true,
+        expectJson: true,
+    });
+});
 exports.analyzeVideo = analyzeVideo;
+const analyzeVideoWithPrompt = (videoId, prompt, sportTypeOverride, jobId) => __awaiter(void 0, void 0, void 0, function* () {
+    return analyzeVideoInternal(videoId, {
+        jobId,
+        promptOverride: prompt,
+        sportTypeOverride,
+        persistToVideoStats: false,
+        expectJson: false,
+    });
+});
+exports.analyzeVideoWithPrompt = analyzeVideoWithPrompt;
 //# sourceMappingURL=aiAnalysisService.js.map

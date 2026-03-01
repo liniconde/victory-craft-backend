@@ -183,6 +183,25 @@ curl -X POST "http://localhost:5001/videos/67d123abc4567890def12345/analyzeVideo
 curl "http://localhost:5001/videos/67d123abc4567890def12345/analyzeVideo/<JOB_ID>/status"
 ```
 
+#### Listar análisis exitosos por video
+
+```bash
+curl "http://localhost:5001/videos/67d123abc4567890def12345/analysis-results?page=1&limit=20"
+```
+
+#### Levantar consumidor de jobs de análisis
+
+```bash
+npm run worker:analysis-jobs
+```
+
+El consumidor:
+- escucha `ANALYSIS_JOBS_SQS_URL`
+- cambia estado del job a `in_progress` al tomar mensaje
+- ejecuta análisis con Gemini usando el prompt del evento
+- guarda `output` y estado final (`completed` o `failed`)
+- crea notificación de finalización o error
+
 #### Listar notificaciones
 
 ```bash

@@ -759,6 +759,43 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/{id}/analysis-results:
+    get:
+      tags: [Videos]
+      summary: Listar analisis exitosos por video
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Analisis por video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoAnalysisRecordPaginatedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /video-stats:
     post:
       tags: [Video Stats]
@@ -1782,6 +1819,9 @@ components:
           default: agent_prompt
         prompt:
           type: string
+        sportType:
+          type: string
+          enum: [football, padel, tennis, basketball, other]
         input:
           type: object
           additionalProperties: true
@@ -1845,6 +1885,44 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    VideoAnalysisRecord:
+      type: object
+      properties:
+        _id:
+          type: string
+        videoId:
+          type: string
+        analysisJobId:
+          type: string
+        analysisType:
+          type: string
+          enum: [agent_prompt, custom]
+        input:
+          type: object
+          additionalProperties: true
+        output:
+          type: object
+          additionalProperties: true
+        params:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VideoAnalysisRecordPaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoAnalysisRecord"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
 
     ConcertLocation:
       type: object
