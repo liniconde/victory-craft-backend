@@ -695,6 +695,70 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/{id}/analyzeVideo:
+    post:
+      tags: [Videos]
+      summary: Crear job de analisis y encolar en SQS
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeVideoJobRequest"
+      responses:
+        "201":
+          description: Job creado y encolado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  job:
+                    $ref: "#/components/schemas/AnalysisJob"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos/{id}/analyzeVideo/{jobId}/status:
+    get:
+      tags: [Videos]
+      summary: Polling de estado de job de analisis
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estado actual del job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisJob"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /video-stats:
     post:
       tags: [Video Stats]
@@ -811,6 +875,49 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+
+  /notifications:
+    get:
+      tags: [Users]
+      summary: Listar notificaciones (mas recientes primero)
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+      responses:
+        "200":
+          description: Lista de notificaciones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /notifications/{id}:
+    delete:
+      tags: [Users]
+      summary: Eliminar notificacion consumida
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Notificacion eliminada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /images/get:
     post:
@@ -1665,6 +1772,79 @@ components:
           type: number
         teamB:
           type: number
+
+    AnalyzeVideoJobRequest:
+      type: object
+      properties:
+        analysisType:
+          type: string
+          enum: [agent_prompt, custom]
+          default: agent_prompt
+        prompt:
+          type: string
+        input:
+          type: object
+          additionalProperties: true
+
+    AnalysisJob:
+      type: object
+      properties:
+        _id:
+          type: string
+        videoId:
+          type: string
+        analysisType:
+          type: string
+          enum: [agent_prompt, custom]
+        status:
+          type: string
+          enum: [queued, started, in_progress, completed, failed]
+        input:
+          type: object
+          additionalProperties: true
+        output:
+          type: object
+          additionalProperties: true
+        errorMessage:
+          type: string
+        sqsMessageId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        _id:
+          type: string
+        type:
+          type: string
+          enum: [analysis_queued, analysis_completed, analysis_failed, info]
+        message:
+          type: string
+        videoId:
+          type: string
+        analysisJobId:
+          type: string
+        metadata:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
 
     ConcertLocation:
       type: object

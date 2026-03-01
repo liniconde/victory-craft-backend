@@ -10,6 +10,7 @@ import imageRoutes from "./routes/imageRoutes";
 import reservationRoutes from "./routes/reservationRoutes";
 import videoRoutes from "./routes/videoRoutes";
 import videoStatsRoutes from "./routes/videoStatsRoutes";
+import notificationRoutes from "./routes/notificationRoutes";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ const defaultCorsOrigins = [
   "https://victory-craft-front.vercel.app",
   "https://victory-craft-front-spa.vercel.app",
   "http://localhost:5173",
+  "http://localhost:8080",
 ];
 
 const envCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
@@ -83,6 +85,7 @@ app.use("/slots", slotRoutes);
 app.use("/reservations", reservationRoutes);
 app.use("/videos", videoRoutes);
 app.use("/video-stats", videoStatsRoutes);
+app.use("/notifications", notificationRoutes);
 
 // Export app for Vercel
 export default app;

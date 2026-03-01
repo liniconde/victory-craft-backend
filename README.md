@@ -52,6 +52,7 @@ GOOGLE_CLIENT_SECRET=tu_google_client_secret
 GOOGLE_CALLBACK_URL=https://victory-craft-backend.vercel.app/users/oauth2/google/callback
 OAUTH_ALLOWED_REDIRECT_URIS=https://victory-craft-front.vercel.app/auth/callback,https://victory-craft-front-spa.vercel.app/auth/callback,http://localhost:5173/auth/callback
 CORS_ALLOWED_ORIGINS=https://victory-craft-front.vercel.app,https://victory-craft-front-spa.vercel.app,http://localhost:5173
+ANALYSIS_JOBS_SQS_URL=https://sqs.us-east-1.amazonaws.com/<account-id>/<queue-name>
 ```
 
 ### **4️⃣ Ejecutar el backend**
@@ -161,6 +162,38 @@ curl "http://localhost:5001/video-stats/67d123abc4567890def12345"
 
 > Nota: payload legacy con `statistics.sportType` sigue soportado.
 > Si se envian `events`, backend recalcula `matchStats` y `teams` para consistencia.
+
+### **9️⃣ Jobs de análisis y notificaciones**
+
+#### Crear job de análisis por prompt (encola en SQS)
+
+```bash
+curl -X POST "http://localhost:5001/videos/67d123abc4567890def12345/analyzeVideo" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "analysisType": "agent_prompt",
+    "prompt": "Resume las jugadas clave del video",
+    "input": { "language": "es" }
+  }'
+```
+
+#### Polling de estado del job
+
+```bash
+curl "http://localhost:5001/videos/67d123abc4567890def12345/analyzeVideo/<JOB_ID>/status"
+```
+
+#### Listar notificaciones
+
+```bash
+curl "http://localhost:5001/notifications?limit=50"
+```
+
+#### Borrar notificación consumida
+
+```bash
+curl -X DELETE "http://localhost:5001/notifications/<NOTIFICATION_ID>"
+```
 
 ---
 

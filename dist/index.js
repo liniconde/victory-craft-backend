@@ -15,6 +15,7 @@ const imageRoutes_1 = __importDefault(require("./routes/imageRoutes"));
 const reservationRoutes_1 = __importDefault(require("./routes/reservationRoutes"));
 const videoRoutes_1 = __importDefault(require("./routes/videoRoutes"));
 const videoStatsRoutes_1 = __importDefault(require("./routes/videoStatsRoutes"));
+const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
@@ -23,6 +24,7 @@ const defaultCorsOrigins = [
     "https://victory-craft-front.vercel.app",
     "https://victory-craft-front-spa.vercel.app",
     "http://localhost:5173",
+    "http://localhost:8080",
 ];
 const envCorsOrigins = (process.env.CORS_ALLOWED_ORIGINS || "")
     .split(",")
@@ -77,6 +79,7 @@ app.use("/slots", slotRoutes_1.default);
 app.use("/reservations", reservationRoutes_1.default);
 app.use("/videos", videoRoutes_1.default);
 app.use("/video-stats", videoStatsRoutes_1.default);
+app.use("/notifications", notificationRoutes_1.default);
 // Export app for Vercel
 exports.default = app;
 // Start server only if run directly
