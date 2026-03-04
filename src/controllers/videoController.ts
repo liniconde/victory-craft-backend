@@ -2,9 +2,11 @@ import { Request, Response } from "express";
 import {
   createLibraryVideo,
   createVideo,
+  deleteVideoById,
   getLibraryVideosPaginated,
   updateVideo,
   getVideosByField,
+  VideoServiceError,
 } from "../services/videoService";
 import { getUploadS3SignedUrl } from "../services/s3FilesService";
 
@@ -146,5 +148,19 @@ export const handleUploadVideo = async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ message: "Error generating upload URL" });
+  }
+};
+
+export const handleDeleteVideo = async (req: Request, res: Response) => {
+  try {
+    const result = await deleteVideoById(req.params.id as string);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error instanceof VideoServiceError) {
+      res.status(error.status).json({ message: error.message, code: error.code });
+      return;
+    }
+    console.error("error", error);
+    res.status(500).json({ message: error.message || "Internal server error" });
   }
 };

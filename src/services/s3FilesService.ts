@@ -40,3 +40,12 @@ export const getObjectS3SignedUrl = (objectKey: string) => {
 
   return url;
 };
+
+export const deleteObjectS3 = async (objectKey: string) => {
+  await s3
+    .deleteObject({
+      Bucket: BUCKET_NAME,
+      Key: objectKey,
+    })
+    .promise();
+};

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleGetLibraryVideos = exports.handleCreateLibraryVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
+exports.handleDeleteVideo = exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleGetLibraryVideos = exports.handleCreateLibraryVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
 const videoService_1 = require("../services/videoService");
 const s3FilesService_1 = require("../services/s3FilesService");
 const getVideosByFieldController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -148,4 +148,19 @@ const handleUploadVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.handleUploadVideo = handleUploadVideo;
+const handleDeleteVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const result = yield (0, videoService_1.deleteVideoById)(req.params.id);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        if (error instanceof videoService_1.VideoServiceError) {
+            res.status(error.status).json({ message: error.message, code: error.code });
+            return;
+        }
+        console.error("error", error);
+        res.status(500).json({ message: error.message || "Internal server error" });
+    }
+});
+exports.handleDeleteVideo = handleDeleteVideo;
 //# sourceMappingURL=videoController.js.map

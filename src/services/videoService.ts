@@ -1,6 +1,24 @@
 import Video from "../models/Video";
 import { getUploadS3SignedUrl } from "./s3FilesService";
 import { getObjectS3SignedUrl } from "./s3FilesService";
+import { deleteObjectS3 } from "./s3FilesService";
+import mongoose from "mongoose";
+import VideoStats from "../models/VideoStats";
+import AnalysisJob from "../models/AnalysisJob";
+import VideoAnalysisRecord from "../models/VideoAnalysisRecord";
+import VideoSegment from "../models/VideoSegment";
+import Notification from "../models/Notification";
+
+export class VideoServiceError extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
 
 /**
  * Agrega la URL firmada de S3 a un video antes de retornarlo.
@@ -113,4 +131,48 @@ export const getVideosByField = async (fieldId: string) => {
   } catch (error: any) {
     throw new Error(`Error fetching videos by field: ${error.message}`);
   }
+};
+
+export const deleteVideoById = async (videoId: string) => {
+  if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new VideoServiceError(400, "invalid_video_id", "Video id is invalid");
+  }
+
+  const video = await Video.findById(videoId);
+  if (!video) {
+    throw new VideoServiceError(404, "video_not_found", "Video not found");
+  }
+
+  if (video.s3Key) {
+    try {
+      await deleteObjectS3(video.s3Key);
+    } catch (error: any) {
+      // If the file is already gone from S3, we continue with DB cleanup.
+      const errorCode = error?.code || error?.name;
+      if (errorCode !== "NoSuchKey" && errorCode !== "NotFound") {
+        throw new VideoServiceError(
+          502,
+          "s3_delete_failed",
+          `Failed to delete object from S3: ${error?.message || "unknown error"}`,
+        );
+      }
+    }
+  }
+
+  const videoObjectId = new mongoose.Types.ObjectId(videoId);
+
+  await Promise.all([
+    Video.findByIdAndDelete(videoObjectId),
+    VideoStats.deleteOne({ videoId: videoObjectId }),
+    AnalysisJob.deleteMany({ videoId: videoObjectId }),
+    VideoAnalysisRecord.deleteMany({ videoId: videoObjectId }),
+    Notification.deleteMany({ videoId: videoObjectId }),
+    VideoSegment.deleteMany({ libraryVideoId: videoObjectId }),
+  ]);
+
+  return {
+    message: "Video deleted successfully",
+    deletedVideoId: videoId,
+    deletedS3Key: video.s3Key,
+  };
 };

@@ -12,10 +12,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getVideosByField = exports.updateVideo = exports.getLibraryVideosPaginated = exports.createLibraryVideo = exports.createVideo = void 0;
+exports.deleteVideoById = exports.getVideosByField = exports.updateVideo = exports.getLibraryVideosPaginated = exports.createLibraryVideo = exports.createVideo = exports.VideoServiceError = void 0;
 const Video_1 = __importDefault(require("../models/Video"));
 const s3FilesService_1 = require("./s3FilesService");
 const s3FilesService_2 = require("./s3FilesService");
+const s3FilesService_3 = require("./s3FilesService");
+const mongoose_1 = __importDefault(require("mongoose"));
+const VideoStats_1 = __importDefault(require("../models/VideoStats"));
+const AnalysisJob_1 = __importDefault(require("../models/AnalysisJob"));
+const VideoAnalysisRecord_1 = __importDefault(require("../models/VideoAnalysisRecord"));
+const VideoSegment_1 = __importDefault(require("../models/VideoSegment"));
+const Notification_1 = __importDefault(require("../models/Notification"));
+class VideoServiceError extends Error {
+    constructor(status, code, message) {
+        super(message);
+        this.status = status;
+        this.code = code;
+    }
+}
+exports.VideoServiceError = VideoServiceError;
 /**
  * Agrega la URL firmada de S3 a un video antes de retornarlo.
  * @param video - Documento del video en la base de datos.
@@ -131,4 +146,40 @@ const getVideosByField = (fieldId) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.getVideosByField = getVideosByField;
+const deleteVideoById = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!videoId || !mongoose_1.default.Types.ObjectId.isValid(videoId)) {
+        throw new VideoServiceError(400, "invalid_video_id", "Video id is invalid");
+    }
+    const video = yield Video_1.default.findById(videoId);
+    if (!video) {
+        throw new VideoServiceError(404, "video_not_found", "Video not found");
+    }
+    if (video.s3Key) {
+        try {
+            yield (0, s3FilesService_3.deleteObjectS3)(video.s3Key);
+        }
+        catch (error) {
+            // If the file is already gone from S3, we continue with DB cleanup.
+            const errorCode = (error === null || error === void 0 ? void 0 : error.code) || (error === null || error === void 0 ? void 0 : error.name);
+            if (errorCode !== "NoSuchKey" && errorCode !== "NotFound") {
+                throw new VideoServiceError(502, "s3_delete_failed", `Failed to delete object from S3: ${(error === null || error === void 0 ? void 0 : error.message) || "unknown error"}`);
+            }
+        }
+    }
+    const videoObjectId = new mongoose_1.default.Types.ObjectId(videoId);
+    yield Promise.all([
+        Video_1.default.findByIdAndDelete(videoObjectId),
+        VideoStats_1.default.deleteOne({ videoId: videoObjectId }),
+        AnalysisJob_1.default.deleteMany({ videoId: videoObjectId }),
+        VideoAnalysisRecord_1.default.deleteMany({ videoId: videoObjectId }),
+        Notification_1.default.deleteMany({ videoId: videoObjectId }),
+        VideoSegment_1.default.deleteMany({ libraryVideoId: videoObjectId }),
+    ]);
+    return {
+        message: "Video deleted successfully",
+        deletedVideoId: videoId,
+        deletedS3Key: video.s3Key,
+    };
+});
+exports.deleteVideoById = deleteVideoById;
 //# sourceMappingURL=videoService.js.map

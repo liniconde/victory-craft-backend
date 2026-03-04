@@ -211,8 +211,8 @@ const analyzeVideoInternal = async (videoId: string, options?: AnalyzeVideoOptio
     console.log("Generating content...");
 
     // 6. Generate Content
-    // Using gemini-flash-latest as requested/verified
-    const modelConfig: any = { model: "gemini-flash-latest" };
+    // Using gemini-3-flash-preview as requested/verified
+    const modelConfig: any = { model: "gemini-2.5-flash" };
     if (options?.expectJson !== false) {
       modelConfig.generationConfig = { responseMimeType: "application/json" };
     }
