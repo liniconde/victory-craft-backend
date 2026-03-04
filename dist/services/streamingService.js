@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createSegment = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.createMatchSession = exports.StreamingServiceError = void 0;
+exports.closeRoomStream = exports.createSegment = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.createMatchSession = exports.StreamingServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const MatchSession_1 = __importDefault(require("../models/MatchSession"));
 const StreamRoom_1 = __importDefault(require("../models/StreamRoom"));
@@ -44,13 +44,25 @@ const ensureRoomAccess = (roomId, userId) => __awaiter(void 0, void 0, void 0, f
         throw new StreamingServiceError(403, "forbidden", "User is not part of room");
     return room;
 });
-const recalcSessionDuration = (matchSessionId) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+const getSessionMetrics = (matchSessionId) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
     const rows = yield VideoSegment_1.default.aggregate([
         { $match: { matchSessionId: new mongoose_1.default.Types.ObjectId(matchSessionId) } },
-        { $group: { _id: null, total: { $sum: "$durationSec" } } },
+        {
+            $group: {
+                _id: null,
+                total: { $sum: "$durationSec" },
+                lastSequence: { $max: "$sequence" },
+            },
+        },
     ]);
-    const totalDurationSec = ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.total) || 0;
+    return {
+        totalDurationSec: ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.total) || 0,
+        lastSequence: (_c = (_b = rows[0]) === null || _b === void 0 ? void 0 : _b.lastSequence) !== null && _c !== void 0 ? _c : -1,
+    };
+});
+const recalcSessionDuration = (matchSessionId) => __awaiter(void 0, void 0, void 0, function* () {
+    const { totalDurationSec } = yield getSessionMetrics(matchSessionId);
     yield MatchSession_1.default.findByIdAndUpdate(matchSessionId, { totalDurationSec });
     return totalDurationSec;
 });
@@ -126,8 +138,17 @@ const getRoomDetails = (roomId, userId) => __awaiter(void 0, void 0, void 0, fun
     assertObjectId(roomId, "roomId");
     assertObjectId(userId, "userId");
     const room = yield ensureRoomAccess(roomId, userId);
+    const session = yield MatchSession_1.default.findById(room.matchSessionId);
     const participants = yield RoomParticipant_1.default.find({ roomId, status: "active" });
-    return Object.assign(Object.assign({}, room.toObject()), { participants: participants.map((p) => p.toObject()) });
+    return Object.assign(Object.assign({}, room.toObject()), { participants: participants.map((p) => p.toObject()), matchSession: session
+            ? {
+                _id: session._id,
+                title: session.title,
+                status: session.status,
+                totalDurationSec: session.totalDurationSec,
+                endedAt: session.endedAt,
+            }
+            : null });
 });
 exports.getRoomDetails = getRoomDetails;
 const listRoomSegments = (roomId, userId, afterSequence) => __awaiter(void 0, void 0, void 0, function* () {
@@ -159,6 +180,12 @@ const createSegment = (matchSessionId, ownerId, payload) => __awaiter(void 0, vo
     if (!room || String(room.matchSessionId) !== matchSessionId) {
         throw new StreamingServiceError(404, "room_not_found", "Room not found for session");
     }
+    if (room.status !== "active") {
+        throw new StreamingServiceError(409, "room_closed", "Room is closed");
+    }
+    if (session.status !== "active") {
+        throw new StreamingServiceError(409, "session_ended", "Match session is ended");
+    }
     if (!payload.s3Key || !payload.videoUrl) {
         throw new StreamingServiceError(400, "invalid_segment_payload", "s3Key and videoUrl are required");
     }
@@ -178,9 +205,18 @@ const createSegment = (matchSessionId, ownerId, payload) => __awaiter(void 0, vo
         matchSessionId,
         sequence: payload.sequence,
     });
+    const sessionMetrics = yield getSessionMetrics(matchSessionId);
+    const expectedNextSequence = sessionMetrics.lastSequence + 1;
+    const hasGap = payload.sequence > expectedNextSequence;
     if (existing) {
         return {
             created: false,
+            totalDurationSec: sessionMetrics.totalDurationSec,
+            lastSequence: sessionMetrics.lastSequence,
+            sequenceInfo: {
+                expectedNextSequence,
+                hasGap: false,
+            },
             segment: Object.assign(Object.assign({}, existing.toObject()), { signedDownloadUrl: (0, s3FilesService_1.getObjectS3SignedUrl)(existing.s3Key) }),
         };
     }
@@ -197,17 +233,72 @@ const createSegment = (matchSessionId, ownerId, payload) => __awaiter(void 0, vo
         uploadedAt: new Date(),
     });
     const totalDurationSec = yield recalcSessionDuration(matchSessionId);
+    const { lastSequence } = yield getSessionMetrics(matchSessionId);
     const segment = Object.assign(Object.assign({}, created.toObject()), { signedDownloadUrl: (0, s3FilesService_1.getObjectS3SignedUrl)(created.s3Key) });
     const segmentUploadedEvent = {
         type: "segment_uploaded",
         roomId: payload.roomId,
         matchSessionId,
         totalDurationSec,
+        lastSequence,
         segment,
         at: new Date().toISOString(),
     };
     roomEventsService_1.roomEventsBus.publish(payload.roomId, segmentUploadedEvent);
-    return { created: true, segment, totalDurationSec };
+    return {
+        created: true,
+        totalDurationSec,
+        lastSequence,
+        sequenceInfo: {
+            expectedNextSequence,
+            hasGap,
+        },
+        segment,
+    };
 });
 exports.createSegment = createSegment;
+const closeRoomStream = (roomId, ownerId) => __awaiter(void 0, void 0, void 0, function* () {
+    assertObjectId(roomId, "roomId");
+    assertObjectId(ownerId, "ownerId");
+    const room = yield StreamRoom_1.default.findById(roomId);
+    if (!room) {
+        throw new StreamingServiceError(404, "room_not_found", "Room not found");
+    }
+    if (String(room.ownerId) !== ownerId) {
+        throw new StreamingServiceError(403, "forbidden", "Only owner can close room");
+    }
+    const session = yield MatchSession_1.default.findById(room.matchSessionId);
+    if (!session) {
+        throw new StreamingServiceError(404, "session_not_found", "Match session not found");
+    }
+    const { totalDurationSec, lastSequence } = yield getSessionMetrics(String(session._id));
+    const endedAt = new Date();
+    yield Promise.all([
+        StreamRoom_1.default.findByIdAndUpdate(roomId, { status: "closed" }),
+        MatchSession_1.default.findByIdAndUpdate(session._id, {
+            status: "ended",
+            endedAt,
+            totalDurationSec,
+        }),
+    ]);
+    const closedEvent = {
+        type: "stream_closed",
+        roomId,
+        matchSessionId: String(session._id),
+        endedAt: endedAt.toISOString(),
+        totalDurationSec,
+        lastSequence,
+        at: new Date().toISOString(),
+    };
+    roomEventsService_1.roomEventsBus.publish(roomId, closedEvent);
+    return {
+        roomId,
+        matchSessionId: String(session._id),
+        endedAt: endedAt.toISOString(),
+        totalDurationSec,
+        lastSequence,
+        status: "closed",
+    };
+});
+exports.closeRoomStream = closeRoomStream;
 //# sourceMappingURL=streamingService.js.map

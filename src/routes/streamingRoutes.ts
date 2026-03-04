@@ -8,6 +8,7 @@ import {
   handleGetRoomSegments,
   handleJoinRoom,
   handleLeaveRoom,
+  handleCloseRoom,
   handleSubscribeRoomEvents,
 } from "../controllers/streamingController";
 
@@ -21,6 +22,7 @@ router.get("/rooms/:id", requireAuth, handleGetRoom);
 router.get("/rooms/:id/segments", requireAuth, handleGetRoomSegments);
 router.post("/rooms/:id/join", requireAuth, handleJoinRoom);
 router.post("/rooms/:id/leave", requireAuth, handleLeaveRoom);
+router.post("/rooms/:id/close", requireAuth, handleCloseRoom);
 router.get("/rooms/:id/events", requireAuth, handleSubscribeRoomEvents);
 
 export default router;

@@ -5,7 +5,11 @@ import RoomParticipant from "../models/RoomParticipant";
 import VideoSegment from "../models/VideoSegment";
 import { getObjectS3SignedUrl } from "./s3FilesService";
 import { roomEventsBus } from "./roomEventsService";
-import { CreateVideoSegmentDto, SegmentUploadedEvent } from "../contracts/streamingContracts";
+import {
+  CreateVideoSegmentDto,
+  SegmentUploadedEvent,
+  StreamClosedEvent,
+} from "../contracts/streamingContracts";
 
 export class StreamingServiceError extends Error {
   status: number;
@@ -35,12 +39,25 @@ const ensureRoomAccess = async (roomId: string, userId: string) => {
   return room;
 };
 
-const recalcSessionDuration = async (matchSessionId: string) => {
+const getSessionMetrics = async (matchSessionId: string) => {
   const rows = await VideoSegment.aggregate([
     { $match: { matchSessionId: new mongoose.Types.ObjectId(matchSessionId) } },
-    { $group: { _id: null, total: { $sum: "$durationSec" } } },
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$durationSec" },
+        lastSequence: { $max: "$sequence" },
+      },
+    },
   ]);
-  const totalDurationSec = rows[0]?.total || 0;
+  return {
+    totalDurationSec: rows[0]?.total || 0,
+    lastSequence: rows[0]?.lastSequence ?? -1,
+  };
+};
+
+const recalcSessionDuration = async (matchSessionId: string) => {
+  const { totalDurationSec } = await getSessionMetrics(matchSessionId);
   await MatchSession.findByIdAndUpdate(matchSessionId, { totalDurationSec });
   return totalDurationSec;
 };
@@ -137,10 +154,20 @@ export const getRoomDetails = async (roomId: string, userId: string) => {
   assertObjectId(roomId, "roomId");
   assertObjectId(userId, "userId");
   const room = await ensureRoomAccess(roomId, userId);
+  const session = await MatchSession.findById(room.matchSessionId);
   const participants = await RoomParticipant.find({ roomId, status: "active" });
   return {
     ...room.toObject(),
     participants: participants.map((p) => p.toObject()),
+    matchSession: session
+      ? {
+          _id: session._id,
+          title: session.title,
+          status: session.status,
+          totalDurationSec: session.totalDurationSec,
+          endedAt: session.endedAt,
+        }
+      : null,
   };
 };
 
@@ -187,6 +214,12 @@ export const createSegment = async (
   if (!room || String(room.matchSessionId) !== matchSessionId) {
     throw new StreamingServiceError(404, "room_not_found", "Room not found for session");
   }
+  if (room.status !== "active") {
+    throw new StreamingServiceError(409, "room_closed", "Room is closed");
+  }
+  if (session.status !== "active") {
+    throw new StreamingServiceError(409, "session_ended", "Match session is ended");
+  }
 
   if (!payload.s3Key || !payload.videoUrl) {
     throw new StreamingServiceError(400, "invalid_segment_payload", "s3Key and videoUrl are required");
@@ -224,10 +257,19 @@ export const createSegment = async (
     matchSessionId,
     sequence: payload.sequence,
   });
+  const sessionMetrics = await getSessionMetrics(matchSessionId);
+  const expectedNextSequence = sessionMetrics.lastSequence + 1;
+  const hasGap = payload.sequence > expectedNextSequence;
 
   if (existing) {
     return {
       created: false,
+      totalDurationSec: sessionMetrics.totalDurationSec,
+      lastSequence: sessionMetrics.lastSequence,
+      sequenceInfo: {
+        expectedNextSequence,
+        hasGap: false,
+      },
       segment: {
         ...existing.toObject(),
         signedDownloadUrl: getObjectS3SignedUrl(existing.s3Key),
@@ -249,6 +291,7 @@ export const createSegment = async (
   });
 
   const totalDurationSec = await recalcSessionDuration(matchSessionId);
+  const { lastSequence } = await getSessionMetrics(matchSessionId);
   const segment = {
     ...created.toObject(),
     signedDownloadUrl: getObjectS3SignedUrl(created.s3Key),
@@ -259,11 +302,72 @@ export const createSegment = async (
     roomId: payload.roomId,
     matchSessionId,
     totalDurationSec,
+    lastSequence,
     segment,
     at: new Date().toISOString(),
   };
 
   roomEventsBus.publish(payload.roomId, segmentUploadedEvent);
 
-  return { created: true, segment, totalDurationSec };
+  return {
+    created: true,
+    totalDurationSec,
+    lastSequence,
+    sequenceInfo: {
+      expectedNextSequence,
+      hasGap,
+    },
+    segment,
+  };
+};
+
+export const closeRoomStream = async (roomId: string, ownerId: string) => {
+  assertObjectId(roomId, "roomId");
+  assertObjectId(ownerId, "ownerId");
+
+  const room = await StreamRoom.findById(roomId);
+  if (!room) {
+    throw new StreamingServiceError(404, "room_not_found", "Room not found");
+  }
+  if (String(room.ownerId) !== ownerId) {
+    throw new StreamingServiceError(403, "forbidden", "Only owner can close room");
+  }
+
+  const session = await MatchSession.findById(room.matchSessionId);
+  if (!session) {
+    throw new StreamingServiceError(404, "session_not_found", "Match session not found");
+  }
+
+  const { totalDurationSec, lastSequence } = await getSessionMetrics(String(session._id));
+  const endedAt = new Date();
+
+  await Promise.all([
+    StreamRoom.findByIdAndUpdate(roomId, { status: "closed" }),
+    MatchSession.findByIdAndUpdate(session._id, {
+      status: "ended",
+      endedAt,
+      totalDurationSec,
+    }),
+  ]);
+
+  const closedEvent: StreamClosedEvent = {
+    type: "stream_closed",
+    roomId,
+    matchSessionId: String(session._id),
+    endedAt: endedAt.toISOString(),
+    totalDurationSec,
+    lastSequence,
+    at: new Date().toISOString(),
+  };
+
+  roomEventsBus.publish(roomId, closedEvent);
+
+  return {
+    roomId,
+    matchSessionId: String(session._id),
+    endedAt: endedAt.toISOString(),
+    totalDurationSec,
+    lastSequence,
+    status: "closed",
+  };
 };

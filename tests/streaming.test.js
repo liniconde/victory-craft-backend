@@ -13,6 +13,7 @@ const {
   createMatchSession,
   createRoomForSession,
   createSegment,
+  closeRoomStream,
   StreamingServiceError,
 } = require("../src/services/streamingService");
 
@@ -67,10 +68,12 @@ test("createSegment es idempotente por (matchSessionId, sequence)", async () => 
   const originalSessionFind = MatchSession.findById;
   const originalRoomFind = StreamRoom.findById;
   const originalSegmentFindOne = VideoSegment.findOne;
+  const originalAggregate = VideoSegment.aggregate;
   const originalSigned = s3FilesService.getObjectS3SignedUrl;
 
-  MatchSession.findById = async () => ({ _id: sessionId, ownerId });
-  StreamRoom.findById = async () => ({ _id: roomId, matchSessionId: sessionId });
+  MatchSession.findById = async () => ({ _id: sessionId, ownerId, status: "active" });
+  StreamRoom.findById = async () => ({ _id: roomId, matchSessionId: sessionId, status: "active" });
+  VideoSegment.aggregate = async () => [{ total: 40, lastSequence: 3 }];
   VideoSegment.findOne = async () => ({
     _id: "seg-1",
     matchSessionId: sessionId,
@@ -99,12 +102,61 @@ test("createSegment es idempotente por (matchSessionId, sequence)", async () => 
     });
 
     assert.equal(result.created, false);
+    assert.equal(result.totalDurationSec, 40);
+    assert.equal(result.lastSequence, 3);
     assert.equal(result.segment.sequence, 1);
     assert.equal(result.segment.signedDownloadUrl, "https://signed.example/clip-1.mp4");
   } finally {
     MatchSession.findById = originalSessionFind;
     StreamRoom.findById = originalRoomFind;
     VideoSegment.findOne = originalSegmentFindOne;
+    VideoSegment.aggregate = originalAggregate;
+    s3FilesService.getObjectS3SignedUrl = originalSigned;
+  }
+});
+
+test("createSegment retorna totalDurationSec y lastSequence en creacion", async () => {
+  const originalSessionFind = MatchSession.findById;
+  const originalRoomFind = StreamRoom.findById;
+  const originalSegmentFindOne = VideoSegment.findOne;
+  const originalSegmentCreate = VideoSegment.create;
+  const originalAggregate = VideoSegment.aggregate;
+  const originalSessionUpdate = MatchSession.findByIdAndUpdate;
+  const originalSigned = s3FilesService.getObjectS3SignedUrl;
+
+  MatchSession.findById = async () => ({ _id: sessionId, ownerId, status: "active" });
+  StreamRoom.findById = async () => ({ _id: roomId, matchSessionId: sessionId, status: "active" });
+  VideoSegment.findOne = async () => null;
+  VideoSegment.aggregate = async () => [{ total: 60, lastSequence: 4 }];
+  MatchSession.findByIdAndUpdate = async () => null;
+  VideoSegment.create = async (payload) => ({
+    _id: "seg-new",
+    ...payload,
+    toObject: () => ({ _id: "seg-new", ...payload }),
+  });
+  s3FilesService.getObjectS3SignedUrl = () => "https://signed.example/new.mp4";
+
+  try {
+    const result = await createSegment(sessionId, ownerId, {
+      roomId,
+      sequence: 4,
+      durationSec: 20,
+      startOffsetSec: 80,
+      endOffsetSec: 100,
+      s3Key: "clip-new.mp4",
+      videoUrl: "https://bucket.s3.amazonaws.com/clip-new.mp4",
+    });
+
+    assert.equal(result.created, true);
+    assert.equal(result.totalDurationSec, 60);
+    assert.equal(result.lastSequence, 4);
+  } finally {
+    MatchSession.findById = originalSessionFind;
+    StreamRoom.findById = originalRoomFind;
+    VideoSegment.findOne = originalSegmentFindOne;
+    VideoSegment.create = originalSegmentCreate;
+    VideoSegment.aggregate = originalAggregate;
+    MatchSession.findByIdAndUpdate = originalSessionUpdate;
     s3FilesService.getObjectS3SignedUrl = originalSigned;
   }
 });
@@ -132,8 +184,8 @@ test("createSegment valida payload invalido", async () => {
   const originalSessionFind = MatchSession.findById;
   const originalRoomFind = StreamRoom.findById;
 
-  MatchSession.findById = async () => ({ _id: sessionId, ownerId });
-  StreamRoom.findById = async () => ({ _id: roomId, matchSessionId: sessionId });
+  MatchSession.findById = async () => ({ _id: sessionId, ownerId, status: "active" });
+  StreamRoom.findById = async () => ({ _id: roomId, matchSessionId: sessionId, status: "active" });
 
   try {
     await assert.rejects(
@@ -153,6 +205,58 @@ test("createSegment valida payload invalido", async () => {
     );
   } finally {
     MatchSession.findById = originalSessionFind;
+    StreamRoom.findById = originalRoomFind;
+  }
+});
+
+test("closeRoomStream cierra sala por owner y emite stream_closed", async () => {
+  const originalRoomFind = StreamRoom.findById;
+  const originalSessionFind = MatchSession.findById;
+  const originalAggregate = VideoSegment.aggregate;
+  const originalRoomUpdate = StreamRoom.findByIdAndUpdate;
+  const originalSessionUpdate = MatchSession.findByIdAndUpdate;
+
+  StreamRoom.findById = async () => ({ _id: roomId, ownerId, matchSessionId: sessionId });
+  MatchSession.findById = async () => ({ _id: sessionId, ownerId, status: "active" });
+  VideoSegment.aggregate = async () => [{ total: 100, lastSequence: 9 }];
+  StreamRoom.findByIdAndUpdate = async () => null;
+  MatchSession.findByIdAndUpdate = async () => null;
+
+  const received = [];
+  const unsubscribe = roomEventsBus.subscribe(roomId, (event) => received.push(event));
+
+  try {
+    const result = await closeRoomStream(roomId, ownerId);
+    assert.equal(result.status, "closed");
+    assert.equal(result.totalDurationSec, 100);
+    assert.equal(result.lastSequence, 9);
+    assert.equal(received.length, 1);
+    assert.equal(received[0].type, "stream_closed");
+    assert.equal(received[0].lastSequence, 9);
+  } finally {
+    unsubscribe();
+    StreamRoom.findById = originalRoomFind;
+    MatchSession.findById = originalSessionFind;
+    VideoSegment.aggregate = originalAggregate;
+    StreamRoom.findByIdAndUpdate = originalRoomUpdate;
+    MatchSession.findByIdAndUpdate = originalSessionUpdate;
+  }
+});
+
+test("closeRoomStream rechaza cierre por no-owner", async () => {
+  const originalRoomFind = StreamRoom.findById;
+  StreamRoom.findById = async () => ({
+    _id: roomId,
+    ownerId: "67d123abc4567890def00000",
+    matchSessionId: sessionId,
+  });
+
+  try {
+    await assert.rejects(
+      () => closeRoomStream(roomId, ownerId),
+      (error) => error instanceof StreamingServiceError && error.code === "forbidden",
+    );
+  } finally {
     StreamRoom.findById = originalRoomFind;
   }
 });

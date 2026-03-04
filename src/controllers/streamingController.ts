@@ -3,6 +3,7 @@ import {
   createMatchSession,
   createRoomForSession,
   createSegment,
+  closeRoomStream,
   getRoomDetails,
   joinRoom,
   leaveRoom,
@@ -138,6 +139,21 @@ export const handleLeaveRoom = async (req: ReqWithUser, res: Response) => {
     }
 
     const result = await leaveRoom(req.params.id as string, userId);
+    res.status(200).json(result);
+  } catch (error: any) {
+    handleError(res, error);
+  }
+};
+
+export const handleCloseRoom = async (req: ReqWithUser, res: Response) => {
+  try {
+    const ownerId = getAuthUserId(req);
+    if (!ownerId) {
+      res.status(401).json({ message: "Unauthorized", code: "unauthorized" });
+      return;
+    }
+
+    const result = await closeRoomStream(req.params.id as string, ownerId);
     res.status(200).json(result);
   } catch (error: any) {
     handleError(res, error);

@@ -920,6 +920,12 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflicto de estado o regla de secuencia
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /rooms/{id}:
     get:
@@ -1040,13 +1046,43 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /rooms/{id}/close:
+    post:
+      tags: [Streaming]
+      summary: Cerrar transmision de sala y sesion asociada
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Stream cerrado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseStreamResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /rooms/{id}/events:
     get:
       tags: [Streaming]
       summary: Suscripcion SSE de eventos de sala
       description: >
         Stream de eventos en vivo. Emite `segment_uploaded` al publicarse
-        segmentos y `heartbeat` periodico.
+        segmentos, `stream_closed` al cerrar, y `heartbeat` periodico.
       security:
         - BearerAuth: []
       parameters:
@@ -2256,6 +2292,8 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/RoomParticipant"
+            matchSession:
+              $ref: "#/components/schemas/MatchSessionSummary"
 
     CreateVideoSegmentRequest:
       type: object
@@ -2326,8 +2364,51 @@ components:
           type: boolean
         totalDurationSec:
           type: number
+        lastSequence:
+          type: integer
+        sequenceInfo:
+          type: object
+          properties:
+            expectedNextSequence:
+              type: integer
+            hasGap:
+              type: boolean
         segment:
           $ref: "#/components/schemas/VideoSegment"
+
+    MatchSessionSummary:
+      type: object
+      properties:
+        _id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [active, ended]
+        totalDurationSec:
+          type: number
+        endedAt:
+          type: string
+          format: date-time
+
+    CloseStreamResponse:
+      type: object
+      properties:
+        roomId:
+          type: string
+        matchSessionId:
+          type: string
+        endedAt:
+          type: string
+          format: date-time
+        totalDurationSec:
+          type: number
+        lastSequence:
+          type: integer
+        status:
+          type: string
+          enum: [closed]
 
     Notification:
       type: object

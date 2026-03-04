@@ -14,6 +14,7 @@ router.get("/rooms/:id", authMiddleware_1.requireAuth, streamingController_1.han
 router.get("/rooms/:id/segments", authMiddleware_1.requireAuth, streamingController_1.handleGetRoomSegments);
 router.post("/rooms/:id/join", authMiddleware_1.requireAuth, streamingController_1.handleJoinRoom);
 router.post("/rooms/:id/leave", authMiddleware_1.requireAuth, streamingController_1.handleLeaveRoom);
+router.post("/rooms/:id/close", authMiddleware_1.requireAuth, streamingController_1.handleCloseRoom);
 router.get("/rooms/:id/events", authMiddleware_1.requireAuth, streamingController_1.handleSubscribeRoomEvents);
 exports.default = router;
 //# sourceMappingURL=streamingRoutes.js.map
