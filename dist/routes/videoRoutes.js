@@ -15,6 +15,7 @@ router.post("/library", videoController_1.handleCreateLibraryVideo);
 router.get("/library", videoController_1.handleGetLibraryVideos);
 router.put("/:id", videoController_1.handleUpdateVideo);
 router.post("/upload", videoController_1.handleUploadVideo);
+router.post("/sign-upload", videoController_1.handleUploadVideo);
 router.post("/:id/analyzeVideo", analysisJobController_1.handleCreateAnalyzeVideoJob);
 router.get("/:id/analyzeVideo/:jobId/status", analysisJobController_1.handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", videoAnalysisRecordController_1.handleListVideoAnalysisRecords);

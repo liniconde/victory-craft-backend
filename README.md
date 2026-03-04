@@ -236,3 +236,38 @@ Este proyecto está bajo la **Licencia MIT**. Puedes usarlo y modificarlo librem
 ---
 
 💡 **Desarrollado con ❤️ por [Tu Nombre](https://github.com/liniconde)**
+
+### **🔟 Streaming por salas (mini clips 20-30s)**
+
+#### Endpoints nuevos (auth bearer requerido)
+
+- Crear sesion:
+  - `POST /match-sessions`
+- Crear sala:
+  - `POST /match-sessions/:id/rooms`
+- Publicar segmento:
+  - `POST /match-sessions/:id/segments`
+- Detalle sala:
+  - `GET /rooms/:id`
+- Listado incremental de segmentos:
+  - `GET /rooms/:id/segments?afterSequence=10`
+- Join/Leave sala:
+  - `POST /rooms/:id/join`
+  - `POST /rooms/:id/leave`
+- Suscripcion en vivo (SSE):
+  - `GET /rooms/:id/events`
+
+#### Flujo recomendado
+
+1. Front sube clip por endpoint actual de firmado S3 (`/videos/sign-upload` o `/videos/upload`).
+2. Front registra clip en biblioteca con `POST /videos/library` (`{ s3Key, videoUrl }`).
+3. Front publica segmento en `POST /match-sessions/:id/segments`.
+4. Backend guarda segmento, recalcula `totalDurationSec`, y emite evento `segment_uploaded` por SSE con `signedDownloadUrl` temporal.
+
+#### Ejemplo SSE
+
+```bash
+curl -N "http://localhost:5001/rooms/<ROOM_ID>/events" \
+  -H "Authorization: Bearer <JWT_APP>"
+```
+

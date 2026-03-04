@@ -59,12 +59,16 @@ exports.handleCreateVideo = handleCreateVideo;
  */
 const handleCreateLibraryVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { s3Key, sportType, s3Url } = req.body;
+        const { s3Key, sportType, s3Url, videoUrl } = req.body;
         if (!s3Key) {
             res.status(400).json({ error: "S3 key is required" });
             return;
         }
-        const video = yield (0, videoService_1.createLibraryVideo)({ s3Key, sportType, s3Url });
+        const video = yield (0, videoService_1.createLibraryVideo)({
+            s3Key,
+            sportType,
+            s3Url: s3Url || videoUrl,
+        });
         res.status(201).json(video);
     }
     catch (error) {
@@ -124,7 +128,19 @@ const handleUploadVideo = (req, res) => __awaiter(void 0, void 0, void 0, functi
             return;
         }
         const { url, s3Url } = (0, s3FilesService_1.getUploadS3SignedUrl)(objectKey);
-        res.status(200).json({ uploadUrl: url, s3Url, objectKey });
+        res.status(200).json({
+            uploadUrl: url,
+            url,
+            presignedUrl: url,
+            signedUrl: url,
+            s3Url,
+            fileUrl: s3Url,
+            publicUrl: s3Url,
+            objectKey,
+            key: objectKey,
+            method: "PUT",
+            headers: {},
+        });
     }
     catch (error) {
         console.error(error);

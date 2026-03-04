@@ -16,6 +16,7 @@ tags:
   - name: Reservations
   - name: Videos
   - name: Video Stats
+  - name: Streaming
   - name: Images
   - name: Concerts
 paths:
@@ -672,6 +673,28 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/sign-upload:
+    post:
+      tags: [Videos]
+      summary: Generar URL firmada para subir video a S3 (alias compatible frontend)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ObjectKeyRequest"
+      responses:
+        "200":
+          description: URL firmada de subida
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3UploadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /videos/{videoId}/analyze:
     post:
       tags: [Videos]
@@ -795,6 +818,256 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+
+  /match-sessions:
+    post:
+      tags: [Streaming]
+      summary: Crear sesion de partido
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMatchSessionRequest"
+      responses:
+        "201":
+          description: Sesion creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchSession"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /match-sessions/{id}/rooms:
+    post:
+      tags: [Streaming]
+      summary: Crear sala para sesion
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "201":
+          description: Sala creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreamRoom"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /match-sessions/{id}/segments:
+    post:
+      tags: [Streaming]
+      summary: Publicar segmento (clip 20-30s) en sesion/sala
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVideoSegmentRequest"
+      responses:
+        "201":
+          description: Segmento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateVideoSegmentResponse"
+        "200":
+          description: Segmento idempotente ya existente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateVideoSegmentResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/{id}:
+    get:
+      tags: [Streaming]
+      summary: Obtener detalle de sala
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Sala y participantes activos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StreamRoomDetails"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/{id}/segments:
+    get:
+      tags: [Streaming]
+      summary: Listar segmentos de sala (polling incremental)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+        - in: query
+          name: afterSequence
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+      responses:
+        "200":
+          description: Segmentos ordenados por secuencia
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VideoSegment"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/{id}/join:
+    post:
+      tags: [Streaming]
+      summary: Unirse a una sala
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Participante activo en sala
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomParticipant"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/{id}/leave:
+    post:
+      tags: [Streaming]
+      summary: Salir de una sala
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Participante marcado como left
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomParticipant"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /rooms/{id}/events:
+    get:
+      tags: [Streaming]
+      summary: Suscripcion SSE de eventos de sala
+      description: >
+        Stream de eventos en vivo. Emite `segment_uploaded` al publicarse
+        segmentos y `heartbeat` periodico.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Stream text/event-stream abierto
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /video-stats:
     post:
@@ -1066,6 +1339,10 @@ paths:
 
 components:
   securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
     GoogleOAuth2:
       type: oauth2
       flows:
@@ -1446,6 +1723,8 @@ components:
           enum: [football, padel, tennis, basketball, other]
         s3Url:
           type: string
+        videoUrl:
+          type: string
 
     VideoLibraryListItem:
       type: object
@@ -1512,16 +1791,44 @@ components:
       properties:
         objectKey:
           type: string
+        fileType:
+          type: string
+        sessionId:
+          type: string
+        filename:
+          type: string
+        contentType:
+          type: string
+        durationSeconds:
+          type: number
 
     S3UploadResponse:
       type: object
       properties:
         uploadUrl:
           type: string
+        url:
+          type: string
+        presignedUrl:
+          type: string
+        signedUrl:
+          type: string
         s3Url:
+          type: string
+        fileUrl:
+          type: string
+        publicUrl:
           type: string
         objectKey:
           type: string
+        key:
+          type: string
+        method:
+          type: string
+          example: PUT
+        headers:
+          type: object
+          additionalProperties: true
 
     S3DownloadResponse:
       type: object
@@ -1861,6 +2168,166 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    CreateMatchSessionRequest:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+
+    MatchSession:
+      type: object
+      properties:
+        _id:
+          type: string
+        ownerId:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum: [active, ended]
+        endedAt:
+          type: string
+          format: date-time
+        totalDurationSec:
+          type: number
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StreamRoom:
+      type: object
+      properties:
+        _id:
+          type: string
+        matchSessionId:
+          type: string
+        ownerId:
+          type: string
+        status:
+          type: string
+          enum: [active, closed]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    RoomParticipant:
+      type: object
+      properties:
+        _id:
+          type: string
+        roomId:
+          type: string
+        userId:
+          type: string
+        role:
+          type: string
+          enum: [owner, participant]
+        joinedAt:
+          type: string
+          format: date-time
+        leftAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [active, left]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    StreamRoomDetails:
+      allOf:
+        - $ref: "#/components/schemas/StreamRoom"
+        - type: object
+          properties:
+            participants:
+              type: array
+              items:
+                $ref: "#/components/schemas/RoomParticipant"
+
+    CreateVideoSegmentRequest:
+      type: object
+      required:
+        [roomId, sequence, durationSec, startOffsetSec, endOffsetSec, s3Key, videoUrl]
+      properties:
+        roomId:
+          type: string
+        libraryVideoId:
+          type: string
+        sequence:
+          type: integer
+          minimum: 0
+        durationSec:
+          type: number
+          minimum: 0
+        startOffsetSec:
+          type: number
+          minimum: 0
+        endOffsetSec:
+          type: number
+          minimum: 0
+        s3Key:
+          type: string
+        videoUrl:
+          type: string
+          format: uri
+
+    VideoSegment:
+      type: object
+      properties:
+        _id:
+          type: string
+        matchSessionId:
+          type: string
+        roomId:
+          type: string
+        libraryVideoId:
+          type: string
+        sequence:
+          type: integer
+        durationSec:
+          type: number
+        startOffsetSec:
+          type: number
+        endOffsetSec:
+          type: number
+        s3Key:
+          type: string
+        videoUrl:
+          type: string
+        signedDownloadUrl:
+          type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateVideoSegmentResponse:
+      type: object
+      properties:
+        created:
+          type: boolean
+        totalDurationSec:
+          type: number
+        segment:
+          $ref: "#/components/schemas/VideoSegment"
 
     Notification:
       type: object

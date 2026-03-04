@@ -60,14 +60,18 @@ export const handleCreateVideo = async (req: Request, res: Response) => {
  */
 export const handleCreateLibraryVideo = async (req: Request, res: Response) => {
   try {
-    const { s3Key, sportType, s3Url } = req.body;
+    const { s3Key, sportType, s3Url, videoUrl } = req.body;
 
     if (!s3Key) {
       res.status(400).json({ error: "S3 key is required" });
       return;
     }
 
-    const video = await createLibraryVideo({ s3Key, sportType, s3Url });
+    const video = await createLibraryVideo({
+      s3Key,
+      sportType,
+      s3Url: s3Url || videoUrl,
+    });
     res.status(201).json(video);
   } catch (error: any) {
     console.error("error", error);
@@ -126,7 +130,19 @@ export const handleUploadVideo = async (req: Request, res: Response) => {
     }
 
     const { url, s3Url } = getUploadS3SignedUrl(objectKey);
-    res.status(200).json({ uploadUrl: url, s3Url, objectKey });
+    res.status(200).json({
+      uploadUrl: url,
+      url,
+      presignedUrl: url,
+      signedUrl: url,
+      s3Url,
+      fileUrl: s3Url,
+      publicUrl: s3Url,
+      objectKey,
+      key: objectKey,
+      method: "PUT",
+      headers: {},
+    });
   } catch (error: any) {
     console.error(error);
     res.status(500).json({ message: "Error generating upload URL" });

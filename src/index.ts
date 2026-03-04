@@ -11,6 +11,7 @@ import reservationRoutes from "./routes/reservationRoutes";
 import videoRoutes from "./routes/videoRoutes";
 import videoStatsRoutes from "./routes/videoStatsRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
+import streamingRoutes from "./routes/streamingRoutes";
 
 dotenv.config();
 
@@ -86,6 +87,7 @@ app.use("/reservations", reservationRoutes);
 app.use("/videos", videoRoutes);
 app.use("/video-stats", videoStatsRoutes);
 app.use("/notifications", notificationRoutes);
+app.use("/", streamingRoutes);
 
 // Export app for Vercel
 export default app;

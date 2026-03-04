@@ -21,6 +21,7 @@ router.post("/library", handleCreateLibraryVideo);
 router.get("/library", handleGetLibraryVideos);
 router.put("/:id", handleUpdateVideo);
 router.post("/upload", handleUploadVideo);
+router.post("/sign-upload", handleUploadVideo);
 router.post("/:id/analyzeVideo", handleCreateAnalyzeVideoJob);
 router.get("/:id/analyzeVideo/:jobId/status", handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", handleListVideoAnalysisRecords);
