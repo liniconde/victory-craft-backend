@@ -82,24 +82,48 @@ exports.createLibraryVideo = createLibraryVideo;
  * @param page - Pagina actual (base 1).
  * @param limit - Cantidad por pagina.
  */
-const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20) {
+const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20, searchTerm) {
+    var _a, _b, _c, _d;
     try {
         const safePage = Math.max(1, page);
         const safeLimit = Math.min(100, Math.max(1, limit));
         const skip = (safePage - 1) * safeLimit;
-        // For now, library listing should include legacy videos regardless of `videoType`.
-        const filter = {
-            s3Key: { $exists: true, $ne: "" },
-        };
-        const [videos, total] = yield Promise.all([
-            Video_1.default.find(filter)
-                .sort({ uploadedAt: -1 })
-                .skip(skip)
-                .limit(safeLimit)
-                .select("_id s3Key uploadedAt")
-                .lean(),
-            Video_1.default.countDocuments(filter),
+        const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const baseMatch = { s3Key: { $exists: true, $ne: "" } };
+        const safeQuery = (searchTerm || "").trim();
+        const matchStage = !safeQuery
+            ? baseMatch
+            : {
+                $and: [
+                    baseMatch,
+                    {
+                        $or: [
+                            { s3Key: { $regex: escapeRegex(safeQuery), $options: "i" } },
+                            {
+                                $expr: {
+                                    $regexMatch: {
+                                        input: { $toString: "$_id" },
+                                        regex: escapeRegex(safeQuery),
+                                        options: "i",
+                                    },
+                                },
+                            },
+                        ],
+                    },
+                ],
+            };
+        const rows = yield Video_1.default.aggregate([
+            { $match: matchStage },
+            { $sort: { uploadedAt: -1 } },
+            {
+                $facet: {
+                    items: [{ $skip: skip }, { $limit: safeLimit }, { $project: { _id: 1, s3Key: 1, uploadedAt: 1 } }],
+                    totalCount: [{ $count: "count" }],
+                },
+            },
         ]);
+        const videos = ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.items) || [];
+        const total = ((_d = (_c = (_b = rows[0]) === null || _b === void 0 ? void 0 : _b.totalCount) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.count) || 0;
         const items = videos.map((video) => ({
             _id: video._id,
             s3Key: video.s3Key,

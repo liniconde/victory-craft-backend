@@ -579,6 +579,9 @@ paths:
       summary: Listar videos de biblioteca (paginado)
       description: >
         Devuelve items livianos para listado con URL firmada de reproduccion.
+        Si `searchTerm` viene, filtra globalmente antes de paginar por `s3Key` (contains
+        case-insensitive) y por coincidencia en `_id` convertido a string.
+        Ejemplo: `/videos/library?page=1&limit=20&searchTerm=padel`.
       parameters:
         - in: query
           name: page
@@ -595,6 +598,12 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - in: query
+          name: searchTerm
+          required: false
+          schema:
+            type: string
+          description: Texto de busqueda global (se aplica antes de paginar)
       responses:
         "200":
           description: Lista paginada de videos de biblioteca
@@ -602,6 +611,22 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoLibraryPaginatedResponse"
+              examples:
+                filtered:
+                  summary: Ejemplo con filtro por nombre
+                  value:
+                    items:
+                      - _id: "67ed8f71cf3e27c5fe0ce245"
+                        s3Key: "videoPadelTest.mp4"
+                        uploadedAt: "2025-04-02T19:26:41.417Z"
+                        videoUrl: "https://victory-craft.s3.amazonaws.com/videoPadelTest.mp4?X-Amz-..."
+                    pagination:
+                      page: 1
+                      limit: 20
+                      total: 1
+                      totalPages: 1
+                      hasNextPage: false
+                      hasPrevPage: false
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":

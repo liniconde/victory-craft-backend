@@ -88,6 +88,8 @@ export const handleGetLibraryVideos = async (req: Request, res: Response) => {
   try {
     const page = Number(req.query.page ?? 1);
     const limit = Number(req.query.limit ?? 20);
+    const searchTerm =
+      typeof req.query.searchTerm === "string" ? req.query.searchTerm : undefined;
 
     if (!Number.isFinite(page) || !Number.isFinite(limit)) {
       res
@@ -96,7 +98,7 @@ export const handleGetLibraryVideos = async (req: Request, res: Response) => {
       return;
     }
 
-    const result = await getLibraryVideosPaginated(page, limit);
+    const result = await getLibraryVideosPaginated(page, limit, searchTerm);
     res.status(200).json(result);
   } catch (error: any) {
     console.error("error", error);

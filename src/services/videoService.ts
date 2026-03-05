@@ -69,26 +69,51 @@ export const createLibraryVideo = async (videoData: any) => {
  * @param page - Pagina actual (base 1).
  * @param limit - Cantidad por pagina.
  */
-export const getLibraryVideosPaginated = async (page = 1, limit = 20) => {
+export const getLibraryVideosPaginated = async (page = 1, limit = 20, searchTerm?: string) => {
   try {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
     const skip = (safePage - 1) * safeLimit;
 
-    // For now, library listing should include legacy videos regardless of `videoType`.
-    const filter = {
-      s3Key: { $exists: true, $ne: "" },
-    };
+    const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const baseMatch = { s3Key: { $exists: true, $ne: "" } };
+    const safeQuery = (searchTerm || "").trim();
 
-    const [videos, total] = await Promise.all([
-      Video.find(filter)
-        .sort({ uploadedAt: -1 })
-        .skip(skip)
-        .limit(safeLimit)
-        .select("_id s3Key uploadedAt")
-        .lean(),
-      Video.countDocuments(filter),
+    const matchStage = !safeQuery
+      ? baseMatch
+      : {
+          $and: [
+            baseMatch,
+            {
+              $or: [
+                { s3Key: { $regex: escapeRegex(safeQuery), $options: "i" } },
+                {
+                  $expr: {
+                    $regexMatch: {
+                      input: { $toString: "$_id" },
+                      regex: escapeRegex(safeQuery),
+                      options: "i",
+                    },
+                  },
+                },
+              ],
+            },
+          ],
+        };
+
+    const rows = await Video.aggregate([
+      { $match: matchStage },
+      { $sort: { uploadedAt: -1 } },
+      {
+        $facet: {
+          items: [{ $skip: skip }, { $limit: safeLimit }, { $project: { _id: 1, s3Key: 1, uploadedAt: 1 } }],
+          totalCount: [{ $count: "count" }],
+        },
+      },
     ]);
+
+    const videos = rows[0]?.items || [];
+    const total = rows[0]?.totalCount?.[0]?.count || 0;
 
     const items = videos.map((video: any) => ({
       _id: video._id,
