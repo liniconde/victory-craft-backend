@@ -581,7 +581,8 @@ paths:
         Devuelve items livianos para listado con URL firmada de reproduccion.
         Si `searchTerm` viene, filtra globalmente antes de paginar por `s3Key` (contains
         case-insensitive) y por coincidencia en `_id` convertido a string.
-        Ejemplo: `/videos/library?page=1&limit=20&searchTerm=padel`.
+        Tambien permite filtrar por `sportType`.
+        Ejemplo: `/videos/library?page=1&limit=20&searchTerm=padel&sportType=football`.
       parameters:
         - in: query
           name: page
@@ -604,6 +605,13 @@ paths:
           schema:
             type: string
           description: Texto de busqueda global (se aplica antes de paginar)
+        - in: query
+          name: sportType
+          required: false
+          schema:
+            type: string
+            enum: [football, padel, tennis, basketball, other]
+          description: Filtra por tipo de deporte del video
       responses:
         "200":
           description: Lista paginada de videos de biblioteca
@@ -1183,6 +1191,65 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoStats"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /video-stats/football/videos-with-goals:
+    get:
+      tags: [Video Stats]
+      summary: Listar videos con estadisticas de futbol y al menos un gol
+      parameters:
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Videos de futbol que tienen goles en estadisticas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FootballVideosWithGoalsResponse"
+              examples:
+                default:
+                  value:
+                    items:
+                      - videoId: "67ed8f71cf3e27c5fe0ce245"
+                        sportType: "football"
+                        teamAName: "Team A"
+                        teamBName: "Team B"
+                        goals:
+                          total: 2
+                          teamA: 1
+                          teamB: 1
+                        summary: "Partido con varias jugadas de gol"
+                        updatedAt: "2026-03-05T18:00:00.000Z"
+                        video:
+                          _id: "67ed8f71cf3e27c5fe0ce245"
+                          s3Key: "match-001.mp4"
+                          uploadedAt: "2026-03-05T17:30:00.000Z"
+                          videoType: "library"
+                          videoUrl: "https://victory-craft.s3.amazonaws.com/match-001.mp4?X-Amz-..."
+                    pagination:
+                      page: 1
+                      limit: 20
+                      total: 1
+                      totalPages: 1
+                      hasNextPage: false
+                      hasPrevPage: false
         "400":
           $ref: "#/components/responses/BadRequest"
         "500":
@@ -1981,6 +2048,52 @@ components:
             - BallTrackNet
             - Gemini-2.0-Flash
             - custom
+
+    FootballVideoWithGoalsItem:
+      type: object
+      properties:
+        videoId:
+          type: string
+        sportType:
+          type: string
+          enum: [football]
+        teamAName:
+          type: string
+        teamBName:
+          type: string
+        goals:
+          $ref: "#/components/schemas/MatchMetric"
+        summary:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+        video:
+          type: object
+          nullable: true
+          properties:
+            _id:
+              type: string
+            s3Key:
+              type: string
+            uploadedAt:
+              type: string
+              format: date-time
+            videoType:
+              type: string
+              enum: [field, library]
+            videoUrl:
+              type: string
+
+    FootballVideosWithGoalsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FootballVideoWithGoalsItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
         statistics:
           type: object
           properties:

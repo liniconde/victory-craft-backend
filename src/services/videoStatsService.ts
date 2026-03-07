@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import VideoStats from "../models/VideoStats";
 import Video from "../models/Video";
+import { getObjectS3SignedUrl } from "./s3FilesService";
 
 type SportType = "football" | "padel" | "tennis" | "basketball" | "other";
 type EventType = "pass" | "shot" | "goal" | "foul" | "other";
@@ -357,5 +358,100 @@ export const deleteVideoStats = async (videoId: string) => {
   } catch (error: any) {
     if (error instanceof VideoStatsServiceError) throw error;
     throw new Error(`Error deleting video stats: ${error.message}`);
+  }
+};
+
+export const listFootballVideosWithGoals = async (page = 1, limit = 20) => {
+  try {
+    const safePage = Math.max(1, page);
+    const safeLimit = Math.min(100, Math.max(1, limit));
+    const skip = (safePage - 1) * safeLimit;
+
+    const rows = await VideoStats.aggregate([
+      {
+        $match: {
+          sportType: "football",
+          $or: [
+            { "matchStats.goals.total": { $gt: 0 } },
+            { "matchStats.goals.teamA": { $gt: 0 } },
+            { "matchStats.goals.teamB": { $gt: 0 } },
+            { "teams.stats.goals": { $gt: 0 } },
+          ],
+        },
+      },
+      { $sort: { updatedAt: -1 } },
+      {
+        $facet: {
+          items: [
+            { $skip: skip },
+            { $limit: safeLimit },
+            {
+              $lookup: {
+                from: "videos",
+                localField: "videoId",
+                foreignField: "_id",
+                as: "video",
+              },
+            },
+            { $unwind: { path: "$video", preserveNullAndEmptyArrays: true } },
+            {
+              $project: {
+                _id: 0,
+                videoId: 1,
+                sportType: 1,
+                teamAName: 1,
+                teamBName: 1,
+                matchStats: 1,
+                summary: 1,
+                updatedAt: 1,
+                video: {
+                  _id: "$video._id",
+                  s3Key: "$video.s3Key",
+                  uploadedAt: "$video.uploadedAt",
+                  videoType: "$video.videoType",
+                },
+              },
+            },
+          ],
+          totalCount: [{ $count: "count" }],
+        },
+      },
+    ]);
+
+    const rawItems = rows[0]?.items || [];
+    const total = rows[0]?.totalCount?.[0]?.count || 0;
+
+    const items = rawItems.map((item: any) => ({
+      videoId: item.videoId,
+      sportType: item.sportType,
+      teamAName: item.teamAName,
+      teamBName: item.teamBName,
+      goals: item.matchStats?.goals || { total: 0, teamA: 0, teamB: 0 },
+      summary: item.summary || "",
+      updatedAt: item.updatedAt,
+      video: item.video
+        ? {
+            _id: item.video._id,
+            s3Key: item.video.s3Key,
+            uploadedAt: item.video.uploadedAt,
+            videoType: item.video.videoType,
+            videoUrl: item.video.s3Key ? getObjectS3SignedUrl(item.video.s3Key) : undefined,
+          }
+        : null,
+    }));
+
+    return {
+      items,
+      pagination: {
+        page: safePage,
+        limit: safeLimit,
+        total,
+        totalPages: Math.ceil(total / safeLimit),
+        hasNextPage: safePage * safeLimit < total,
+        hasPrevPage: safePage > 1,
+      },
+    };
+  } catch (error: any) {
+    throw new Error(`Error listing football videos with goals: ${error.message}`);
   }
 };

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import {
   createVideoStats,
   getVideoStatsByVideoId,
+  listFootballVideosWithGoals,
   updateVideoStats,
   deleteVideoStats,
   VideoStatsServiceError,
@@ -74,6 +75,26 @@ export const handleDeleteVideoStats = async (req: Request, res: Response) => {
   try {
     const { videoId } = req.params;
     const result = await deleteVideoStats(videoId as string);
+    res.status(200).json(result);
+  } catch (error: any) {
+    handleVideoStatsError(res, error);
+  }
+};
+
+export const handleListFootballVideosWithGoals = async (
+  req: Request,
+  res: Response,
+) => {
+  try {
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 20);
+
+    if (!Number.isFinite(page) || !Number.isFinite(limit)) {
+      res.status(400).json({ message: "page and limit must be valid numbers" });
+      return;
+    }
+
+    const result = await listFootballVideosWithGoals(page, limit);
     res.status(200).json(result);
   } catch (error: any) {
     handleVideoStatsError(res, error);

@@ -5,10 +5,12 @@ const assert = require("node:assert/strict");
 
 const VideoStats = require("../src/models/VideoStats").default;
 const Video = require("../src/models/Video").default;
+const s3FilesService = require("../src/services/s3FilesService");
 const {
   calculateStatsFromEvents,
   createVideoStats,
   updateVideoStats,
+  listFootballVideosWithGoals,
   VideoStatsServiceError,
 } = require("../src/services/videoStatsService");
 
@@ -134,5 +136,45 @@ test("createVideoStats valida events y retorna error de dominio", async () => {
     );
   } finally {
     Video.exists = originalVideoExists;
+  }
+});
+
+test("listFootballVideosWithGoals retorna paginado con video firmado", async () => {
+  const originalAggregate = VideoStats.aggregate;
+  const originalSigner = s3FilesService.getObjectS3SignedUrl;
+
+  VideoStats.aggregate = async () => [
+    {
+      items: [
+        {
+          videoId: validVideoId,
+          sportType: "football",
+          teamAName: "Team A",
+          teamBName: "Team B",
+          matchStats: { goals: { total: 2, teamA: 1, teamB: 1 } },
+          summary: "Resumen",
+          updatedAt: "2026-03-05T00:00:00.000Z",
+          video: {
+            _id: validVideoId,
+            s3Key: "match.mp4",
+            uploadedAt: "2026-03-05T00:00:00.000Z",
+            videoType: "library",
+          },
+        },
+      ],
+      totalCount: [{ count: 1 }],
+    },
+  ];
+  s3FilesService.getObjectS3SignedUrl = (key) => `signed://${key}`;
+
+  try {
+    const result = await listFootballVideosWithGoals(1, 20);
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0].goals.total, 2);
+    assert.equal(result.items[0].video.videoUrl, "signed://match.mp4");
+    assert.equal(result.pagination.total, 1);
+  } finally {
+    VideoStats.aggregate = originalAggregate;
+    s3FilesService.getObjectS3SignedUrl = originalSigner;
   }
 });

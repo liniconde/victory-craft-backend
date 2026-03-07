@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const videoStatsController_1 = require("../controllers/videoStatsController");
 const router = express_1.default.Router();
 router.post("/", videoStatsController_1.handleCreateVideoStats);
+router.get("/football/videos-with-goals", videoStatsController_1.handleListFootballVideosWithGoals);
 router.get("/:videoId", videoStatsController_1.handleGetVideoStats);
 router.put("/:videoId", videoStatsController_1.handleUpdateVideoStats);
 router.delete("/:videoId", videoStatsController_1.handleDeleteVideoStats);

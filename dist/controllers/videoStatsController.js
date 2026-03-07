@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleDeleteVideoStats = exports.handleUpdateVideoStats = exports.handleGetVideoStats = exports.handleCreateVideoStats = void 0;
+exports.handleListFootballVideosWithGoals = exports.handleDeleteVideoStats = exports.handleUpdateVideoStats = exports.handleGetVideoStats = exports.handleCreateVideoStats = void 0;
 const videoStatsService_1 = require("../services/videoStatsService");
 const handleVideoStatsError = (res, error) => {
     if (error instanceof videoStatsService_1.VideoStatsServiceError) {
@@ -85,4 +85,21 @@ const handleDeleteVideoStats = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.handleDeleteVideoStats = handleDeleteVideoStats;
+const handleListFootballVideosWithGoals = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b;
+    try {
+        const page = Number((_a = req.query.page) !== null && _a !== void 0 ? _a : 1);
+        const limit = Number((_b = req.query.limit) !== null && _b !== void 0 ? _b : 20);
+        if (!Number.isFinite(page) || !Number.isFinite(limit)) {
+            res.status(400).json({ message: "page and limit must be valid numbers" });
+            return;
+        }
+        const result = yield (0, videoStatsService_1.listFootballVideosWithGoals)(page, limit);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        handleVideoStatsError(res, error);
+    }
+});
+exports.handleListFootballVideosWithGoals = handleListFootballVideosWithGoals;
 //# sourceMappingURL=videoStatsController.js.map

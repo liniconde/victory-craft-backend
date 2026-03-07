@@ -82,7 +82,7 @@ exports.createLibraryVideo = createLibraryVideo;
  * @param page - Pagina actual (base 1).
  * @param limit - Cantidad por pagina.
  */
-const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20, searchTerm) {
+const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20, searchTerm, sportType) {
     var _a, _b, _c, _d;
     try {
         const safePage = Math.max(1, page);
@@ -91,6 +91,10 @@ const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], 
         const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const baseMatch = { s3Key: { $exists: true, $ne: "" } };
         const safeQuery = (searchTerm || "").trim();
+        const safeSportType = (sportType || "").trim().toLowerCase();
+        if (safeSportType) {
+            baseMatch.sportType = safeSportType;
+        }
         const matchStage = !safeQuery
             ? baseMatch
             : {

@@ -69,15 +69,25 @@ export const createLibraryVideo = async (videoData: any) => {
  * @param page - Pagina actual (base 1).
  * @param limit - Cantidad por pagina.
  */
-export const getLibraryVideosPaginated = async (page = 1, limit = 20, searchTerm?: string) => {
+export const getLibraryVideosPaginated = async (
+  page = 1,
+  limit = 20,
+  searchTerm?: string,
+  sportType?: string,
+) => {
   try {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(100, Math.max(1, limit));
     const skip = (safePage - 1) * safeLimit;
 
     const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const baseMatch = { s3Key: { $exists: true, $ne: "" } };
+    const baseMatch: any = { s3Key: { $exists: true, $ne: "" } };
     const safeQuery = (searchTerm || "").trim();
+    const safeSportType = (sportType || "").trim().toLowerCase();
+
+    if (safeSportType) {
+      baseMatch.sportType = safeSportType;
+    }
 
     const matchStage = !safeQuery
       ? baseMatch

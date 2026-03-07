@@ -84,3 +84,23 @@ test("getLibraryVideosPaginated calcula paginacion sobre total filtrado", async 
     Video.aggregate = originalAggregate;
   }
 });
+
+test("getLibraryVideosPaginated con sportType aplica filtro por deporte", async () => {
+  const originalAggregate = Video.aggregate;
+  let pipelineRef = null;
+
+  Video.aggregate = async (pipeline) => {
+    pipelineRef = pipeline;
+    return [{ items: [], totalCount: [{ count: 0 }] }];
+  };
+
+  try {
+    await getLibraryVideosPaginated(1, 20, undefined, "football");
+    assert.ok(pipelineRef);
+    assert.deepEqual(pipelineRef[0], {
+      $match: { s3Key: { $exists: true, $ne: "" }, sportType: "football" },
+    });
+  } finally {
+    Video.aggregate = originalAggregate;
+  }
+});

@@ -12,10 +12,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteVideoStats = exports.updateVideoStats = exports.getVideoStatsByVideoId = exports.createVideoStats = exports.calculateStatsFromEvents = exports.VideoStatsServiceError = void 0;
+exports.listFootballVideosWithGoals = exports.deleteVideoStats = exports.updateVideoStats = exports.getVideoStatsByVideoId = exports.createVideoStats = exports.calculateStatsFromEvents = exports.VideoStatsServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const VideoStats_1 = __importDefault(require("../models/VideoStats"));
 const Video_1 = __importDefault(require("../models/Video"));
+const s3FilesService_1 = require("./s3FilesService");
 class VideoStatsServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -278,4 +279,100 @@ const deleteVideoStats = (videoId) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.deleteVideoStats = deleteVideoStats;
+const listFootballVideosWithGoals = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20) {
+    var _a, _b, _c, _d;
+    try {
+        const safePage = Math.max(1, page);
+        const safeLimit = Math.min(100, Math.max(1, limit));
+        const skip = (safePage - 1) * safeLimit;
+        const rows = yield VideoStats_1.default.aggregate([
+            {
+                $match: {
+                    sportType: "football",
+                    $or: [
+                        { "matchStats.goals.total": { $gt: 0 } },
+                        { "matchStats.goals.teamA": { $gt: 0 } },
+                        { "matchStats.goals.teamB": { $gt: 0 } },
+                        { "teams.stats.goals": { $gt: 0 } },
+                    ],
+                },
+            },
+            { $sort: { updatedAt: -1 } },
+            {
+                $facet: {
+                    items: [
+                        { $skip: skip },
+                        { $limit: safeLimit },
+                        {
+                            $lookup: {
+                                from: "videos",
+                                localField: "videoId",
+                                foreignField: "_id",
+                                as: "video",
+                            },
+                        },
+                        { $unwind: { path: "$video", preserveNullAndEmptyArrays: true } },
+                        {
+                            $project: {
+                                _id: 0,
+                                videoId: 1,
+                                sportType: 1,
+                                teamAName: 1,
+                                teamBName: 1,
+                                matchStats: 1,
+                                summary: 1,
+                                updatedAt: 1,
+                                video: {
+                                    _id: "$video._id",
+                                    s3Key: "$video.s3Key",
+                                    uploadedAt: "$video.uploadedAt",
+                                    videoType: "$video.videoType",
+                                },
+                            },
+                        },
+                    ],
+                    totalCount: [{ $count: "count" }],
+                },
+            },
+        ]);
+        const rawItems = ((_a = rows[0]) === null || _a === void 0 ? void 0 : _a.items) || [];
+        const total = ((_d = (_c = (_b = rows[0]) === null || _b === void 0 ? void 0 : _b.totalCount) === null || _c === void 0 ? void 0 : _c[0]) === null || _d === void 0 ? void 0 : _d.count) || 0;
+        const items = rawItems.map((item) => {
+            var _a;
+            return ({
+                videoId: item.videoId,
+                sportType: item.sportType,
+                teamAName: item.teamAName,
+                teamBName: item.teamBName,
+                goals: ((_a = item.matchStats) === null || _a === void 0 ? void 0 : _a.goals) || { total: 0, teamA: 0, teamB: 0 },
+                summary: item.summary || "",
+                updatedAt: item.updatedAt,
+                video: item.video
+                    ? {
+                        _id: item.video._id,
+                        s3Key: item.video.s3Key,
+                        uploadedAt: item.video.uploadedAt,
+                        videoType: item.video.videoType,
+                        videoUrl: item.video.s3Key ? (0, s3FilesService_1.getObjectS3SignedUrl)(item.video.s3Key) : undefined,
+                    }
+                    : null,
+            });
+        });
+        return {
+            items,
+            pagination: {
+                page: safePage,
+                limit: safeLimit,
+                total,
+                totalPages: Math.ceil(total / safeLimit),
+                hasNextPage: safePage * safeLimit < total,
+                hasPrevPage: safePage > 1,
+            },
+        };
+    }
+    catch (error) {
+        throw new Error(`Error listing football videos with goals: ${error.message}`);
+    }
+});
+exports.listFootballVideosWithGoals = listFootballVideosWithGoals;
 //# sourceMappingURL=videoStatsService.js.map
