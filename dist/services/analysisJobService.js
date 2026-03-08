@@ -12,12 +12,13 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAnalysisJobStatus = exports.createPromptAnalysisJob = exports.AnalysisJobServiceError = void 0;
+exports.getAnalysisJobStatus = exports.createAgentPromptAnalysisJob = exports.createPromptAnalysisJob = exports.AnalysisJobServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const AnalysisJob_1 = __importDefault(require("../models/AnalysisJob"));
 const Video_1 = __importDefault(require("../models/Video"));
 const notificationService_1 = require("./notificationService");
 const queueService_1 = require("./queueService");
+const workerAgentService_1 = require("./workerAgentService");
 class AnalysisJobServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -83,6 +84,11 @@ const createPromptAnalysisJob = (videoId, payload) => __awaiter(void 0, void 0, 
     }
 });
 exports.createPromptAnalysisJob = createPromptAnalysisJob;
+const createAgentPromptAnalysisJob = (videoId, payload) => __awaiter(void 0, void 0, void 0, function* () {
+    validateAnalyzePromptInput(videoId, payload);
+    return (0, workerAgentService_1.createWorkerVideoAnalysisJob)(videoId, payload);
+});
+exports.createAgentPromptAnalysisJob = createAgentPromptAnalysisJob;
 const getAnalysisJobStatus = (videoId, jobId) => __awaiter(void 0, void 0, void 0, function* () {
     if (!videoId || !mongoose_1.default.Types.ObjectId.isValid(videoId)) {
         throw new AnalysisJobServiceError(400, "invalid_video_id", "Video id is invalid");

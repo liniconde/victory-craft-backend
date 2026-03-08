@@ -9,10 +9,15 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleGetAnalyzeVideoJobStatus = exports.handleCreateAnalyzeVideoJob = void 0;
+exports.handleGetAnalyzeVideoJobStatus = exports.handleCreateAnalyzeAgentJob = exports.handleCreateAnalyzeVideoJob = void 0;
 const analysisJobService_1 = require("../services/analysisJobService");
+const workerAgentService_1 = require("../services/workerAgentService");
 const handleError = (res, error) => {
     if (error instanceof analysisJobService_1.AnalysisJobServiceError) {
+        res.status(error.status).json({ message: error.message, code: error.code });
+        return;
+    }
+    if (error instanceof workerAgentService_1.WorkerAgentServiceError) {
         res.status(error.status).json({ message: error.message, code: error.code });
         return;
     }
@@ -23,7 +28,7 @@ const handleCreateAnalyzeVideoJob = (req, res) => __awaiter(void 0, void 0, void
         const { id: videoId } = req.params;
         const result = yield (0, analysisJobService_1.createPromptAnalysisJob)(videoId, req.body || {});
         res.status(201).json({
-            message: "Analysis job created and queued",
+            message: "Legacy analysis job created and queued",
             job: result,
         });
     }
@@ -32,6 +37,20 @@ const handleCreateAnalyzeVideoJob = (req, res) => __awaiter(void 0, void 0, void
     }
 });
 exports.handleCreateAnalyzeVideoJob = handleCreateAnalyzeVideoJob;
+const handleCreateAnalyzeAgentJob = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id: videoId } = req.params;
+        const result = yield (0, analysisJobService_1.createAgentPromptAnalysisJob)(videoId, req.body || {});
+        res.status(201).json({
+            message: "Agent analysis job created and queued",
+            job: result,
+        });
+    }
+    catch (error) {
+        handleError(res, error);
+    }
+});
+exports.handleCreateAnalyzeAgentJob = handleCreateAnalyzeAgentJob;
 const handleGetAnalyzeVideoJobStatus = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id: videoId, jobId } = req.params;

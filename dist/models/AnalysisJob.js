@@ -53,6 +53,18 @@ const AnalysisJobSchema = new mongoose_1.Schema({
     output: { type: mongoose_1.Schema.Types.Mixed, required: false },
     errorMessage: { type: String, required: false },
     sqsMessageId: { type: String, required: false },
+    workerEventId: { type: String, required: false, index: true },
+    workerRequestId: { type: String, required: false, index: true },
+    workerCorrelationId: { type: String, required: false, index: true },
+    workerTraceId: { type: String, required: false },
+    workerIdempotencyKey: { type: String, required: false, index: true },
+    workerExecutionId: { type: String, required: false, index: true },
+    workerResultId: { type: String, required: false },
+    workerResultStatus: {
+        type: String,
+        enum: ["SUCCESS", "PARTIAL_SUCCESS", "FAILED"],
+        required: false,
+    },
     startedAt: { type: Date, required: false },
     completedAt: { type: Date, required: false },
 }, { timestamps: true });

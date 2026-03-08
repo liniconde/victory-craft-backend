@@ -3,12 +3,22 @@ import AnalysisJob from "../models/AnalysisJob";
 import Video from "../models/Video";
 import { createNotification } from "./notificationService";
 import { sendAnalysisJobToQueue } from "./queueService";
+import { createWorkerVideoAnalysisJob } from "./workerAgentService";
 
 type AnalyzePromptInput = {
   analysisType?: "agent_prompt" | "custom";
   prompt?: string;
   sportType?: "football" | "padel" | "tennis" | "basketball" | "other";
   input?: Record<string, any>;
+  correlationId?: string;
+  traceId?: string;
+  maxAttempts?: number;
+  outputS3Prefix?: string;
+  localJobDir?: string;
+  render?: Record<string, any>;
+  stats?: Record<string, any>;
+  upload?: Record<string, any>;
+  analysis?: Record<string, any>;
 };
 
 export class AnalysisJobServiceError extends Error {
@@ -111,6 +121,15 @@ export const createPromptAnalysisJob = async (
       failed?.errorMessage || "Failed to enqueue analysis job",
     );
   }
+};
+
+export const createAgentPromptAnalysisJob = async (
+  videoId: string,
+  payload: AnalyzePromptInput,
+) => {
+  validateAnalyzePromptInput(videoId, payload);
+
+  return createWorkerVideoAnalysisJob(videoId, payload);
 };
 
 export const getAnalysisJobStatus = async (videoId: string, jobId: string) => {

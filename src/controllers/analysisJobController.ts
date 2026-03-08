@@ -1,12 +1,18 @@
 import { Request, Response } from "express";
 import {
   AnalysisJobServiceError,
+  createAgentPromptAnalysisJob,
   createPromptAnalysisJob,
   getAnalysisJobStatus,
 } from "../services/analysisJobService";
+import { WorkerAgentServiceError } from "../services/workerAgentService";
 
 const handleError = (res: Response, error: any) => {
   if (error instanceof AnalysisJobServiceError) {
+    res.status(error.status).json({ message: error.message, code: error.code });
+    return;
+  }
+  if (error instanceof WorkerAgentServiceError) {
     res.status(error.status).json({ message: error.message, code: error.code });
     return;
   }
@@ -18,7 +24,20 @@ export const handleCreateAnalyzeVideoJob = async (req: Request, res: Response) =
     const { id: videoId } = req.params;
     const result = await createPromptAnalysisJob(videoId as string, req.body || {});
     res.status(201).json({
-      message: "Analysis job created and queued",
+      message: "Legacy analysis job created and queued",
+      job: result,
+    });
+  } catch (error: any) {
+    handleError(res, error);
+  }
+};
+
+export const handleCreateAnalyzeAgentJob = async (req: Request, res: Response) => {
+  try {
+    const { id: videoId } = req.params;
+    const result = await createAgentPromptAnalysisJob(videoId as string, req.body || {});
+    res.status(201).json({
+      message: "Agent analysis job created and queued",
       job: result,
     });
   } catch (error: any) {

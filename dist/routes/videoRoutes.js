@@ -18,6 +18,7 @@ router.delete("/:id", videoController_1.handleDeleteVideo);
 router.post("/upload", videoController_1.handleUploadVideo);
 router.post("/sign-upload", videoController_1.handleUploadVideo);
 router.post("/:id/analyzeVideo", analysisJobController_1.handleCreateAnalyzeVideoJob);
+router.post("/:id/analyzeAgent", analysisJobController_1.handleCreateAnalyzeAgentJob);
 router.get("/:id/analyzeVideo/:jobId/status", analysisJobController_1.handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", videoAnalysisRecordController_1.handleListVideoAnalysisRecords);
 router.post("/:videoId/analyze", aiAnalysisController_1.analyzeVideoController);

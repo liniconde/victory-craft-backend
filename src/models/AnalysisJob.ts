@@ -17,6 +17,14 @@ interface IAnalysisJob extends Document {
   output?: Record<string, any>;
   errorMessage?: string;
   sqsMessageId?: string;
+  workerEventId?: string;
+  workerRequestId?: string;
+  workerCorrelationId?: string;
+  workerTraceId?: string;
+  workerIdempotencyKey?: string;
+  workerExecutionId?: string;
+  workerResultId?: string;
+  workerResultStatus?: "SUCCESS" | "PARTIAL_SUCCESS" | "FAILED";
   startedAt?: Date;
   completedAt?: Date;
   createdAt: Date;
@@ -43,6 +51,18 @@ const AnalysisJobSchema = new Schema<IAnalysisJob>(
     output: { type: Schema.Types.Mixed, required: false },
     errorMessage: { type: String, required: false },
     sqsMessageId: { type: String, required: false },
+    workerEventId: { type: String, required: false, index: true },
+    workerRequestId: { type: String, required: false, index: true },
+    workerCorrelationId: { type: String, required: false, index: true },
+    workerTraceId: { type: String, required: false },
+    workerIdempotencyKey: { type: String, required: false, index: true },
+    workerExecutionId: { type: String, required: false, index: true },
+    workerResultId: { type: String, required: false },
+    workerResultStatus: {
+      type: String,
+      enum: ["SUCCESS", "PARTIAL_SUCCESS", "FAILED"],
+      required: false,
+    },
     startedAt: { type: Date, required: false },
     completedAt: { type: Date, required: false },
   },
