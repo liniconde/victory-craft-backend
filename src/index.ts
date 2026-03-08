@@ -68,6 +68,22 @@ app.use(
 );
 app.use(express.json());
 
+app.get("/healthz", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "victory-craft-backend",
+    timestamp: new Date().toISOString(),
+  });
+});
+
+app.get("/", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    service: "victory-craft-backend",
+    healthcheck: "/healthz",
+  });
+});
+
 // Conectar con MongoDB
 if (mongoUri) {
   mongoose

@@ -62,6 +62,20 @@ app.use((0, cors_1.default)({
     credentials: true,
 }));
 app.use(express_1.default.json());
+app.get("/healthz", (_req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "victory-craft-backend",
+        timestamp: new Date().toISOString(),
+    });
+});
+app.get("/", (_req, res) => {
+    res.status(200).json({
+        status: "ok",
+        service: "victory-craft-backend",
+        healthcheck: "/healthz",
+    });
+});
 // Conectar con MongoDB
 if (mongoUri) {
     mongoose_1.default

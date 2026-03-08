@@ -166,6 +166,40 @@ const mapWorkerResultToJobStatus = (status: WorkerResultStatus): "completed" | "
   return "completed";
 };
 
+const buildAgentNotificationMetadata = (params: {
+  stage:
+    | "queued"
+    | "result_received"
+    | "completed"
+    | "partial_success"
+    | "failed"
+    | "enqueue_failed";
+  eventType?: string;
+  requestId?: string;
+  correlationId?: string;
+  traceId?: string;
+  eventId?: string;
+  idempotencyKey?: string;
+  executionId?: string;
+  resultId?: string;
+  workerStatus?: WorkerResultStatus;
+  summary?: string;
+}) => ({
+  flow: "agent",
+  provider: "mcp_worker_agent",
+  stage: params.stage,
+  ...(params.eventType ? { eventType: params.eventType } : {}),
+  ...(params.requestId ? { requestId: params.requestId } : {}),
+  ...(params.correlationId ? { correlationId: params.correlationId } : {}),
+  ...(params.traceId ? { traceId: params.traceId } : {}),
+  ...(params.eventId ? { eventId: params.eventId } : {}),
+  ...(params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : {}),
+  ...(params.executionId ? { executionId: params.executionId } : {}),
+  ...(params.resultId ? { resultId: params.resultId } : {}),
+  ...(params.workerStatus ? { workerStatus: params.workerStatus } : {}),
+  ...(params.summary ? { summary: params.summary } : {}),
+});
+
 export const createWorkerVideoAnalysisJob = async (
   videoId: string,
   payload: CreateWorkerVideoAnalysisJobInput,
@@ -250,9 +284,15 @@ export const createWorkerVideoAnalysisJob = async (
         metadata: {
           analysisType,
           status: "queued",
-          eventType,
-          requestId: workerEvent.tracing.requestId,
-          correlationId: workerEvent.tracing.correlationId,
+          ...buildAgentNotificationMetadata({
+            stage: "queued",
+            eventType,
+            requestId: workerEvent.tracing.requestId,
+            correlationId: workerEvent.tracing.correlationId,
+            traceId: workerEvent.tracing.traceId,
+            eventId: workerEvent.eventId,
+            idempotencyKey: workerEvent.idempotencyKey,
+          }),
         },
       });
     } catch (notificationError: any) {
@@ -276,7 +316,12 @@ export const createWorkerVideoAnalysisJob = async (
         message: `Failed to enqueue worker analysis job for video ${videoId}`,
         videoId,
         analysisJobId: String(job._id),
-        metadata: { reason: error.message },
+        metadata: {
+          reason: error.message,
+          ...buildAgentNotificationMetadata({
+            stage: "enqueue_failed",
+          }),
+        },
       });
     } catch (notificationError: any) {
       console.error("Failed to create enqueue error notification:", notificationError.message);
@@ -330,6 +375,27 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
   }
 
   const newStatus = mapWorkerResultToJobStatus(parsed.status);
+
+  try {
+    await createNotification({
+      type: "info",
+      message: `Worker result received for analysis job ${String(job._id)}`,
+      videoId: String(job.videoId),
+      analysisJobId: String(job._id),
+      metadata: buildAgentNotificationMetadata({
+        stage: "result_received",
+        requestId,
+        correlationId,
+        executionId: parsed.executionId,
+        resultId: parsed.resultId,
+        workerStatus: parsed.status,
+        summary: parsed.summary,
+      }),
+    });
+  } catch (notificationError: any) {
+    console.error("Failed to create worker result received notification:", notificationError.message);
+  }
+
   const updated = await AnalysisJob.findByIdAndUpdate(
     job._id,
     {
@@ -372,9 +438,15 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
       analysisJobId: String(job._id),
       metadata: {
         status: parsed.status,
-        executionId: parsed.executionId,
-        requestId,
-        correlationId,
+        ...buildAgentNotificationMetadata({
+          stage: parsed.status === "FAILED" ? "failed" : parsed.status === "PARTIAL_SUCCESS" ? "partial_success" : "completed",
+          requestId,
+          correlationId,
+          executionId: parsed.executionId,
+          resultId: parsed.resultId,
+          workerStatus: parsed.status,
+          summary: parsed.summary,
+        }),
       },
     });
   } catch (notificationError: any) {

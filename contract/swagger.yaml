@@ -10,6 +10,7 @@ servers:
   - url: http://localhost:5001
     description: Local
 tags:
+  - name: System
   - name: Users
   - name: Fields
   - name: Slots
@@ -20,6 +21,18 @@ tags:
   - name: Images
   - name: Concerts
 paths:
+  /healthz:
+    get:
+      tags: [System]
+      summary: Healthcheck de la API
+      responses:
+        "200":
+          description: API operativa
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
   /users:
     get:
       tags: [Users]
@@ -783,7 +796,11 @@ paths:
   /videos/{id}/analyzeVideo:
     post:
       tags: [Videos]
-      summary: Crear job de analisis y encolar en SQS
+      summary: Crear job de analisis Gemini y encolar en SQS
+      description: >
+        Flujo de analisis basado en Gemini. Convive con `/videos/{id}/analyzeAgent`
+        y el frontend puede ofrecer ambas opciones al usuario segun el tipo de
+        procesamiento que quiera ejecutar.
       parameters:
         - in: path
           name: id
@@ -808,6 +825,109 @@ paths:
                     type: string
                   job:
                     $ref: "#/components/schemas/AnalysisJob"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos/{id}/analyzeAgent:
+    post:
+      tags: [Videos]
+      summary: Crear job de analisis con worker-agent externo
+      description: >
+        Construye el evento `video.analysis.requested`, lo valida con zod y lo publica
+        en la cola SQS del worker-agent externo. Este flujo esta pensado para
+        analisis avanzados orquestados por un agente con tools externas, incluyendo
+        procesamiento mas robusto en Python y generacion de artefactos o videos
+        derivados. La respuesta incluye los ids de correlacion para seguimiento
+        end-to-end desde frontend o backend.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+          description: ID del video de biblioteca o de campo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeAgentVideoJobRequest"
+            examples:
+              e2e:
+                summary: Ejemplo real de prueba E2E
+                value:
+                  analysisType: agent_prompt
+                  prompt: Descarga el video desde S3, ejecuta render de detecciones YOLO con color de camiseta, genera un archivo JSON de estadísticas, sube los artifacts a S3 y analiza los artifacts generados para resumir si el procesamiento fue correcto y si hay hallazgos.
+                  maxAttempts: 5
+                  outputS3Prefix: video-analysis-results/agent-e2e-001
+                  localJobDir: /tmp/video-analysis/agent-e2e-001
+                  render:
+                    toolName: video.worker.render_yolo_boxes_with_jersey_color
+                    outputDir: /tmp/video-analysis/agent-e2e-001/out
+                    yoloModel: yolov8n.pt
+                    processFps: 5
+                    conf: 0.25
+                  stats:
+                    toolName: video.generate_stats_json
+                    outputPath: /tmp/video-analysis/agent-e2e-001/out/stats.json
+                  upload:
+                    toolName: video.upload_artifacts_to_s3
+                    bucket: victory-craft
+                    destinationPrefix: video-analysis-results/agent-e2e-001
+                  analysis:
+                    toolName: video.analyze_generated_artifacts
+                    analysisPrompt: Resume si los artefactos fueron generados correctamente y si hay hallazgos.
+      responses:
+        "201":
+          description: Job agent creado y publicado en SQS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyzeAgentVideoJobResponse"
+              examples:
+                queued:
+                  summary: Respuesta real de job encolado
+                  value:
+                    message: Agent analysis job created and queued
+                    job:
+                      _id: 69adc6d72347dffa88e7fa00
+                      videoId: 67e48d85ebfc561722a57a22
+                      analysisType: agent_prompt
+                      status: queued
+                      input:
+                        prompt: Descarga el video desde S3, ejecuta render de detecciones YOLO con color de camiseta, genera un archivo JSON de estadísticas, sube los artifacts a S3 y analiza los artifacts generados para resumir si el procesamiento fue correcto y si hay hallazgos.
+                      createdAt: "2026-03-08T18:58:31.202Z"
+                      updatedAt: "2026-03-08T18:58:31.737Z"
+                      sqsMessageId: 0bb58429-2601-4abb-90a4-f5e6e1c88b66
+                      workerCorrelationId: 69adc6d72347dffa88e7fa00
+                      workerEventId: 6b08456e-a1d7-4b0a-a11f-b48350548093
+                      workerIdempotencyKey: victorycraft:video.analysis.requested:67e48d85ebfc561722a57a22:v1
+                      workerRequestId: 8f26d9f1-0ec5-4f2a-bcce-67a381dcb45d
+                      workerTraceId: 27119b2d-9a3f-4bb8-a25a-6b07b253a754
+                      workerEvent:
+                        contractVersion: "1.0"
+                        eventId: 6b08456e-a1d7-4b0a-a11f-b48350548093
+                        eventType: video.analysis.requested
+                        occurredAt: "2026-03-08T18:58:31.248Z"
+                        tracing:
+                          requestId: 8f26d9f1-0ec5-4f2a-bcce-67a381dcb45d
+                          correlationId: 69adc6d72347dffa88e7fa00
+                          traceId: 27119b2d-9a3f-4bb8-a25a-6b07b253a754
+                        idempotencyKey: victorycraft:video.analysis.requested:67e48d85ebfc561722a57a22:v1
+                        retry:
+                          attempt: 0
+                          maxAttempts: 5
+                        payload:
+                          videoId: 67e48d85ebfc561722a57a22
+                          jobId: 69adc6d72347dffa88e7fa00
+                          prompt: Descarga el video desde S3, ejecuta render de detecciones YOLO con color de camiseta, genera un archivo JSON de estadísticas, sube los artifacts a S3 y analiza los artifacts generados para resumir si el procesamiento fue correcto y si hay hallazgos.
+                          videoS3Uri: s3://victory-craft/videoFutbol2.mp4
+                          outputS3Prefix: video-analysis-results/agent-e2e-001
+                          localJobDir: /tmp/video-analysis/agent-e2e-001
         "400":
           $ref: "#/components/responses/BadRequest"
         "404":
@@ -1356,6 +1476,25 @@ paths:
             minimum: 1
             maximum: 100
             default: 50
+        - in: query
+          name: videoId
+          required: false
+          schema:
+            type: string
+          description: Filtra notificaciones de un video concreto
+        - in: query
+          name: analysisJobId
+          required: false
+          schema:
+            type: string
+          description: Filtra notificaciones de un job concreto
+        - in: query
+          name: type
+          required: false
+          schema:
+            type: string
+            enum: [analysis_queued, analysis_completed, analysis_failed, info]
+          description: Filtra por tipo de notificacion
       responses:
         "200":
           description: Lista de notificaciones
@@ -1550,6 +1689,19 @@ components:
       properties:
         message:
           type: string
+
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: victory-craft-backend
+        timestamp:
+          type: string
+          format: date-time
 
     User:
       type: object
@@ -2336,6 +2488,115 @@ components:
           type: object
           additionalProperties: true
 
+    WorkerToolConfig:
+      type: object
+      properties:
+        toolName:
+          type: string
+        outputDir:
+          type: string
+        yoloModel:
+          type: string
+        processFps:
+          type: number
+        conf:
+          type: number
+        outputPath:
+          type: string
+        bucket:
+          type: string
+        destinationPrefix:
+          type: string
+        analysisPrompt:
+          type: string
+
+    AnalyzeAgentVideoJobRequest:
+      type: object
+      required: [prompt]
+      properties:
+        analysisType:
+          type: string
+          enum: [agent_prompt, custom]
+          default: agent_prompt
+        prompt:
+          type: string
+        sportType:
+          type: string
+          enum: [football, padel, tennis, basketball, other]
+        input:
+          type: object
+          additionalProperties: true
+        correlationId:
+          type: string
+          description: >
+            ID estable para correlacion end-to-end. Si no se envia, el backend usa el `jobId`.
+        traceId:
+          type: string
+        maxAttempts:
+          type: integer
+          minimum: 1
+          default: 5
+        outputS3Prefix:
+          type: string
+        localJobDir:
+          type: string
+        render:
+          $ref: "#/components/schemas/WorkerToolConfig"
+        stats:
+          $ref: "#/components/schemas/WorkerToolConfig"
+        upload:
+          $ref: "#/components/schemas/WorkerToolConfig"
+        analysis:
+          $ref: "#/components/schemas/WorkerToolConfig"
+
+    WorkerTracing:
+      type: object
+      required: [requestId, correlationId, traceId]
+      properties:
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        traceId:
+          type: string
+      additionalProperties: true
+
+    WorkerRetry:
+      type: object
+      required: [attempt, maxAttempts]
+      properties:
+        attempt:
+          type: integer
+        maxAttempts:
+          type: integer
+      additionalProperties: true
+
+    WorkerInboundEvent:
+      type: object
+      required:
+        [contractVersion, eventId, eventType, occurredAt, tracing, idempotencyKey, retry, payload]
+      properties:
+        contractVersion:
+          type: string
+          example: "1.0"
+        eventId:
+          type: string
+        eventType:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+        tracing:
+          $ref: "#/components/schemas/WorkerTracing"
+        idempotencyKey:
+          type: string
+        retry:
+          $ref: "#/components/schemas/WorkerRetry"
+        payload:
+          type: object
+          additionalProperties: true
+      additionalProperties: true
+
     AnalysisJob:
       type: object
       properties:
@@ -2359,6 +2620,23 @@ components:
           type: string
         sqsMessageId:
           type: string
+        workerEventId:
+          type: string
+        workerRequestId:
+          type: string
+        workerCorrelationId:
+          type: string
+        workerTraceId:
+          type: string
+        workerIdempotencyKey:
+          type: string
+        workerExecutionId:
+          type: string
+        workerResultId:
+          type: string
+        workerResultStatus:
+          type: string
+          enum: [SUCCESS, PARTIAL_SUCCESS, FAILED]
         startedAt:
           type: string
           format: date-time
@@ -2371,6 +2649,22 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    AnalysisAgentJob:
+      allOf:
+        - $ref: "#/components/schemas/AnalysisJob"
+        - type: object
+          properties:
+            workerEvent:
+              $ref: "#/components/schemas/WorkerInboundEvent"
+
+    AnalyzeAgentVideoJobResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        job:
+          $ref: "#/components/schemas/AnalysisAgentJob"
 
     CreateMatchSessionRequest:
       type: object
@@ -2594,6 +2888,10 @@ components:
         metadata:
           type: object
           additionalProperties: true
+          description: >
+            En el flujo `analyzeAgent` incluye metadata de seguimiento como
+            `flow`, `provider`, `stage`, `requestId`, `correlationId`,
+            `traceId`, `eventId`, `executionId`, `resultId` e `idempotencyKey`.
         createdAt:
           type: string
           format: date-time

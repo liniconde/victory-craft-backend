@@ -29,9 +29,26 @@ export const createNotification = async (params: {
   return doc.toObject();
 };
 
-export const listNotifications = async (params?: { limit?: number }) => {
+export const listNotifications = async (params?: {
+  limit?: number;
+  videoId?: string;
+  analysisJobId?: string;
+  type?: "analysis_queued" | "analysis_completed" | "analysis_failed" | "info";
+}) => {
   const limit = Math.min(100, Math.max(1, params?.limit || 50));
-  const rows = await Notification.find().sort({ createdAt: -1 }).limit(limit);
+  const query: Record<string, any> = {};
+
+  if (params?.videoId) {
+    query.videoId = params.videoId;
+  }
+  if (params?.analysisJobId) {
+    query.analysisJobId = params.analysisJobId;
+  }
+  if (params?.type) {
+    query.type = params.type;
+  }
+
+  const rows = await Notification.find(query).sort({ createdAt: -1 }).limit(limit);
   return rows.map((row) => row.toObject());
 };
 

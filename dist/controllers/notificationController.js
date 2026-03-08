@@ -21,7 +21,15 @@ const handleNotificationError = (res, error) => {
 const handleListNotifications = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const limit = Number(req.query.limit || 50);
-        const items = yield (0, notificationService_1.listNotifications)({ limit });
+        const videoId = typeof req.query.videoId === "string" ? req.query.videoId : undefined;
+        const analysisJobId = typeof req.query.analysisJobId === "string" ? req.query.analysisJobId : undefined;
+        const type = typeof req.query.type === "string" ? req.query.type : undefined;
+        const items = yield (0, notificationService_1.listNotifications)({
+            limit,
+            videoId,
+            analysisJobId,
+            type: type,
+        });
         res.status(200).json(items);
     }
     catch (error) {

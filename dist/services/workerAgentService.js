@@ -93,6 +93,7 @@ const mapWorkerResultToJobStatus = (status) => {
     }
     return "completed";
 };
+const buildAgentNotificationMetadata = (params) => (Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ flow: "agent", provider: "mcp_worker_agent", stage: params.stage }, (params.eventType ? { eventType: params.eventType } : {})), (params.requestId ? { requestId: params.requestId } : {})), (params.correlationId ? { correlationId: params.correlationId } : {})), (params.traceId ? { traceId: params.traceId } : {})), (params.eventId ? { eventId: params.eventId } : {})), (params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : {})), (params.executionId ? { executionId: params.executionId } : {})), (params.resultId ? { resultId: params.resultId } : {})), (params.workerStatus ? { workerStatus: params.workerStatus } : {})), (params.summary ? { summary: params.summary } : {})));
 const createWorkerVideoAnalysisJob = (videoId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     toObjectId(videoId, "video_id");
     if (!payload.prompt || !payload.prompt.trim()) {
@@ -154,13 +155,15 @@ const createWorkerVideoAnalysisJob = (videoId, payload) => __awaiter(void 0, voi
                 message: `Analysis job queued for external worker. video=${videoId}`,
                 videoId,
                 analysisJobId: String(job._id),
-                metadata: {
-                    analysisType,
-                    status: "queued",
+                metadata: Object.assign({ analysisType, status: "queued" }, buildAgentNotificationMetadata({
+                    stage: "queued",
                     eventType,
                     requestId: workerEvent.tracing.requestId,
                     correlationId: workerEvent.tracing.correlationId,
-                },
+                    traceId: workerEvent.tracing.traceId,
+                    eventId: workerEvent.eventId,
+                    idempotencyKey: workerEvent.idempotencyKey,
+                })),
             });
         }
         catch (notificationError) {
@@ -176,7 +179,9 @@ const createWorkerVideoAnalysisJob = (videoId, payload) => __awaiter(void 0, voi
                 message: `Failed to enqueue worker analysis job for video ${videoId}`,
                 videoId,
                 analysisJobId: String(job._id),
-                metadata: { reason: error.message },
+                metadata: Object.assign({ reason: error.message }, buildAgentNotificationMetadata({
+                    stage: "enqueue_failed",
+                })),
             });
         }
         catch (notificationError) {
@@ -214,6 +219,26 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
         throw new WorkerAgentServiceError(404, "analysis_job_not_found", `No analysis job found for requestId=${requestId || "n/a"} correlationId=${correlationId || "n/a"}`);
     }
     const newStatus = mapWorkerResultToJobStatus(parsed.status);
+    try {
+        yield (0, notificationService_1.createNotification)({
+            type: "info",
+            message: `Worker result received for analysis job ${String(job._id)}`,
+            videoId: String(job.videoId),
+            analysisJobId: String(job._id),
+            metadata: buildAgentNotificationMetadata({
+                stage: "result_received",
+                requestId,
+                correlationId,
+                executionId: parsed.executionId,
+                resultId: parsed.resultId,
+                workerStatus: parsed.status,
+                summary: parsed.summary,
+            }),
+        });
+    }
+    catch (notificationError) {
+        console.error("Failed to create worker result received notification:", notificationError.message);
+    }
     const updated = yield AnalysisJob_1.default.findByIdAndUpdate(job._id, {
         status: newStatus,
         output: parsed.output,
@@ -249,12 +274,15 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
             message: parsed.summary,
             videoId: String(job.videoId),
             analysisJobId: String(job._id),
-            metadata: {
-                status: parsed.status,
-                executionId: parsed.executionId,
+            metadata: Object.assign({ status: parsed.status }, buildAgentNotificationMetadata({
+                stage: parsed.status === "FAILED" ? "failed" : parsed.status === "PARTIAL_SUCCESS" ? "partial_success" : "completed",
                 requestId,
                 correlationId,
-            },
+                executionId: parsed.executionId,
+                resultId: parsed.resultId,
+                workerStatus: parsed.status,
+                summary: parsed.summary,
+            })),
         });
     }
     catch (notificationError) {

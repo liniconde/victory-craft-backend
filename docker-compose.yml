@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: node:22-bookworm-slim
     container_name: victory-craft-backend
     ports:
       - "5001:5001"
@@ -14,6 +16,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: node:22-bookworm-slim
     container_name: victory-craft-analysis-worker
     command: ["node", "dist/workers/analysisJobsConsumer.js"]
     env_file:

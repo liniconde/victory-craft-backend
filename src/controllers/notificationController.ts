@@ -16,7 +16,17 @@ const handleNotificationError = (res: Response, error: any) => {
 export const handleListNotifications = async (req: Request, res: Response) => {
   try {
     const limit = Number(req.query.limit || 50);
-    const items = await listNotifications({ limit });
+    const videoId = typeof req.query.videoId === "string" ? req.query.videoId : undefined;
+    const analysisJobId =
+      typeof req.query.analysisJobId === "string" ? req.query.analysisJobId : undefined;
+    const type = typeof req.query.type === "string" ? req.query.type : undefined;
+
+    const items = await listNotifications({
+      limit,
+      videoId,
+      analysisJobId,
+      type: type as "analysis_queued" | "analysis_completed" | "analysis_failed" | "info" | undefined,
+    });
     res.status(200).json(items);
   } catch (error: any) {
     handleNotificationError(res, error);

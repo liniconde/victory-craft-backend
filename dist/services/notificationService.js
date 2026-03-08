@@ -36,7 +36,17 @@ const createNotification = (params) => __awaiter(void 0, void 0, void 0, functio
 exports.createNotification = createNotification;
 const listNotifications = (params) => __awaiter(void 0, void 0, void 0, function* () {
     const limit = Math.min(100, Math.max(1, (params === null || params === void 0 ? void 0 : params.limit) || 50));
-    const rows = yield Notification_1.default.find().sort({ createdAt: -1 }).limit(limit);
+    const query = {};
+    if (params === null || params === void 0 ? void 0 : params.videoId) {
+        query.videoId = params.videoId;
+    }
+    if (params === null || params === void 0 ? void 0 : params.analysisJobId) {
+        query.analysisJobId = params.analysisJobId;
+    }
+    if (params === null || params === void 0 ? void 0 : params.type) {
+        query.type = params.type;
+    }
+    const rows = yield Notification_1.default.find(query).sort({ createdAt: -1 }).limit(limit);
     return rows.map((row) => row.toObject());
 });
 exports.listNotifications = listNotifications;
