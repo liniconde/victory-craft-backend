@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const videoController_1 = require("../controllers/videoController");
 const aiAnalysisController_1 = require("../controllers/aiAnalysisController");
 const analysisJobController_1 = require("../controllers/analysisJobController");
+const analysisArtifactController_1 = require("../controllers/analysisArtifactController");
 const videoAnalysisRecordController_1 = require("../controllers/videoAnalysisRecordController");
 const router = express_1.default.Router();
 // 📌 Endpoint para crear un nuevo video
@@ -21,6 +22,8 @@ router.post("/:id/analyzeVideo", analysisJobController_1.handleCreateAnalyzeVide
 router.post("/:id/analyzeAgent", analysisJobController_1.handleCreateAnalyzeAgentJob);
 router.get("/:id/analyzeVideo/:jobId/status", analysisJobController_1.handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", videoAnalysisRecordController_1.handleListVideoAnalysisRecords);
+router.get("/:id/analysis-artifacts", analysisArtifactController_1.handleListVideoAnalysisArtifacts);
+router.get("/:id/analyzeVideo/:jobId/artifacts", analysisArtifactController_1.handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", aiAnalysisController_1.analyzeVideoController);
 exports.default = router;
 //# sourceMappingURL=videoRoutes.js.map

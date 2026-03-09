@@ -30,7 +30,7 @@ const createVideoAnalysisRecord = (params) => __awaiter(void 0, void 0, void 0, 
         analysisType: params.analysisType,
         input: params.input || {},
         output: params.output || {},
-        params: params.extraParams || {},
+        params: Object.assign(Object.assign({}, (params.extraParams || {})), (params.artifactSummary || {})),
     }, { new: true, upsert: true, setDefaultsOnInsert: true });
     return (created === null || created === void 0 ? void 0 : created.toObject) ? created.toObject() : created;
 });

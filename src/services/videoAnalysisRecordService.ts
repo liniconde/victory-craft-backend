@@ -19,6 +19,10 @@ export const createVideoAnalysisRecord = async (params: {
   input: Record<string, any>;
   output: Record<string, any>;
   extraParams?: Record<string, any>;
+  artifactSummary?: {
+    count: number;
+    primaryArtifactS3Key?: string;
+  };
 }) => {
   const created = await VideoAnalysisRecord.findOneAndUpdate(
     { analysisJobId: params.analysisJobId },
@@ -28,7 +32,10 @@ export const createVideoAnalysisRecord = async (params: {
       analysisType: params.analysisType,
       input: params.input || {},
       output: params.output || {},
-      params: params.extraParams || {},
+      params: {
+        ...(params.extraParams || {}),
+        ...(params.artifactSummary || {}),
+      },
     },
     { new: true, upsert: true, setDefaultsOnInsert: true },
   );

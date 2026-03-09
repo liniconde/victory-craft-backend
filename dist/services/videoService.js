@@ -21,6 +21,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const VideoStats_1 = __importDefault(require("../models/VideoStats"));
 const AnalysisJob_1 = __importDefault(require("../models/AnalysisJob"));
 const VideoAnalysisRecord_1 = __importDefault(require("../models/VideoAnalysisRecord"));
+const AnalysisArtifact_1 = __importDefault(require("../models/AnalysisArtifact"));
 const VideoSegment_1 = __importDefault(require("../models/VideoSegment"));
 const Notification_1 = __importDefault(require("../models/Notification"));
 class VideoServiceError extends Error {
@@ -200,6 +201,7 @@ const deleteVideoById = (videoId) => __awaiter(void 0, void 0, void 0, function*
         VideoStats_1.default.deleteOne({ videoId: videoObjectId }),
         AnalysisJob_1.default.deleteMany({ videoId: videoObjectId }),
         VideoAnalysisRecord_1.default.deleteMany({ videoId: videoObjectId }),
+        AnalysisArtifact_1.default.deleteMany({ videoId: videoObjectId }),
         Notification_1.default.deleteMany({ videoId: videoObjectId }),
         VideoSegment_1.default.deleteMany({ libraryVideoId: videoObjectId }),
     ]);

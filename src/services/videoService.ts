@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 import VideoStats from "../models/VideoStats";
 import AnalysisJob from "../models/AnalysisJob";
 import VideoAnalysisRecord from "../models/VideoAnalysisRecord";
+import AnalysisArtifact from "../models/AnalysisArtifact";
 import VideoSegment from "../models/VideoSegment";
 import Notification from "../models/Notification";
 
@@ -201,6 +202,7 @@ export const deleteVideoById = async (videoId: string) => {
     VideoStats.deleteOne({ videoId: videoObjectId }),
     AnalysisJob.deleteMany({ videoId: videoObjectId }),
     VideoAnalysisRecord.deleteMany({ videoId: videoObjectId }),
+    AnalysisArtifact.deleteMany({ videoId: videoObjectId }),
     Notification.deleteMany({ videoId: videoObjectId }),
     VideoSegment.deleteMany({ libraryVideoId: videoObjectId }),
   ]);

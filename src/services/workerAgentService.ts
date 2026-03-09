@@ -10,6 +10,7 @@ import {
   workerResultEventSchema,
 } from "../contracts/workerAgentContracts";
 import { createNotification } from "./notificationService";
+import { upsertAnalysisArtifacts } from "./analysisArtifactService";
 import { createVideoAnalysisRecord } from "./videoAnalysisRecordService";
 import { sendWorkerEvent } from "./workerAgentSqsService";
 
@@ -199,6 +200,140 @@ const buildAgentNotificationMetadata = (params: {
   ...(params.workerStatus ? { workerStatus: params.workerStatus } : {}),
   ...(params.summary ? { summary: params.summary } : {}),
 });
+
+const tryBuildArtifactFromCandidate = (params: {
+  videoId: string;
+  analysisJobId: string;
+  candidate: Record<string, any>;
+  fallbackToolName?: string;
+  fallbackStepName?: string;
+}) => {
+  const candidate = params.candidate || {};
+  const s3Uri =
+    typeof candidate.s3Uri === "string"
+      ? candidate.s3Uri
+      : typeof candidate.uri === "string" && candidate.uri.startsWith("s3://")
+        ? candidate.uri
+        : undefined;
+  const s3Key =
+    typeof candidate.s3Key === "string"
+      ? candidate.s3Key
+      : typeof candidate.key === "string"
+        ? candidate.key
+        : s3Uri?.replace(/^s3:\/\/[^/]+\//, "");
+  const s3Bucket =
+    typeof candidate.s3Bucket === "string"
+      ? candidate.s3Bucket
+      : typeof candidate.bucket === "string"
+        ? candidate.bucket
+        : s3Uri?.replace(/^s3:\/\//, "").split("/")[0];
+
+  if (!s3Key || !s3Bucket) {
+    return null;
+  }
+
+  const inferredUri = s3Uri || `s3://${s3Bucket}/${s3Key}`;
+  const fileName =
+    typeof candidate.filename === "string" ? candidate.filename : s3Key.split("/").pop();
+  const artifactType = (
+    typeof candidate.artifactType === "string"
+      ? candidate.artifactType
+      : typeof candidate.type === "string"
+        ? candidate.type
+        : "other"
+  ) as "json_result" | "json_stats" | "rendered_video" | "image" | "text_report" | "zip" | "other";
+  const role = (
+    typeof candidate.role === "string" ? candidate.role : "supporting_output"
+  ) as "primary_output" | "supporting_output" | "debug" | "preview" | "final_report";
+
+  return {
+    videoId: params.videoId,
+    analysisJobId: params.analysisJobId,
+    flow: "agent" as const,
+    producer: "mcp_worker_agent" as const,
+    artifactType,
+    role,
+    promptKey: typeof candidate.promptKey === "string" ? candidate.promptKey : undefined,
+    promptVersion: typeof candidate.promptVersion === "string" ? candidate.promptVersion : undefined,
+    schemaName: typeof candidate.schemaName === "string" ? candidate.schemaName : undefined,
+    schemaVersion: typeof candidate.schemaVersion === "string" ? candidate.schemaVersion : undefined,
+    s3Bucket,
+    s3Key,
+    s3Uri: inferredUri,
+    mimeType: typeof candidate.mimeType === "string" ? candidate.mimeType : undefined,
+    fileSizeBytes: typeof candidate.fileSizeBytes === "number" ? candidate.fileSizeBytes : undefined,
+    filename: fileName,
+    title: typeof candidate.title === "string" ? candidate.title : undefined,
+    description: typeof candidate.description === "string" ? candidate.description : undefined,
+    stepName:
+      typeof candidate.stepName === "string" ? candidate.stepName : params.fallbackStepName,
+    toolName:
+      typeof candidate.toolName === "string" ? candidate.toolName : params.fallbackToolName,
+    status: (
+      typeof candidate.status === "string" ? candidate.status : "uploaded"
+    ) as "generated" | "uploaded" | "failed",
+    isPrimary: Boolean(candidate.isPrimary),
+    metadata:
+      typeof candidate.metadata === "object" && candidate.metadata ? candidate.metadata : {},
+    preview:
+      typeof candidate.preview === "object" && candidate.preview ? candidate.preview : {},
+  };
+};
+
+const extractArtifactsFromWorkerResult = (params: {
+  videoId: string;
+  analysisJobId: string;
+  output: Record<string, any>;
+}) => {
+  const candidates: Array<Record<string, any>> = [];
+  const directArtifacts = Array.isArray(params.output.artifacts) ? params.output.artifacts : [];
+
+  for (const artifact of directArtifacts) {
+    if (artifact && typeof artifact === "object") {
+      candidates.push(artifact);
+    }
+  }
+
+  const toolOutputs = Array.isArray(params.output.toolOutputs) ? params.output.toolOutputs : [];
+  for (const toolOutput of toolOutputs) {
+    if (!toolOutput || typeof toolOutput !== "object") {
+      continue;
+    }
+
+    const nestedArtifacts = Array.isArray((toolOutput as any).artifacts)
+      ? (toolOutput as any).artifacts
+      : [];
+    for (const artifact of nestedArtifacts) {
+      if (artifact && typeof artifact === "object") {
+        candidates.push({
+          ...artifact,
+          toolName:
+            typeof (toolOutput as any).toolName === "string"
+              ? (toolOutput as any).toolName
+              : (artifact as any).toolName,
+          stepName:
+            typeof (toolOutput as any).stepName === "string"
+              ? (toolOutput as any).stepName
+              : (artifact as any).stepName,
+        });
+      }
+    }
+
+    candidates.push(toolOutput as Record<string, any>);
+  }
+
+  return candidates
+    .map((candidate) =>
+      tryBuildArtifactFromCandidate({
+        videoId: params.videoId,
+        analysisJobId: params.analysisJobId,
+        candidate,
+        fallbackToolName: typeof candidate.toolName === "string" ? candidate.toolName : undefined,
+        fallbackStepName: typeof candidate.stepName === "string" ? candidate.stepName : undefined,
+      }),
+    )
+    .filter(Boolean);
+};
 
 export const createWorkerVideoAnalysisJob = async (
   videoId: string,
@@ -411,6 +546,12 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
   );
 
   try {
+    const artifacts = extractArtifactsFromWorkerResult({
+      videoId: String(job.videoId),
+      analysisJobId: String(job._id),
+      output: (parsed.output || {}) as Record<string, any>,
+    });
+
     await createVideoAnalysisRecord({
       videoId: String(job.videoId),
       analysisJobId: String(job._id),
@@ -425,9 +566,17 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
         requestId,
         correlationId,
       },
+      artifactSummary: {
+        count: artifacts.length,
+        primaryArtifactS3Key: artifacts.find((artifact) => artifact.isPrimary)?.s3Key,
+      },
     });
+
+    if (artifacts.length) {
+      await upsertAnalysisArtifacts(artifacts);
+    }
   } catch (recordError: any) {
-    console.error("Failed to create video analysis record:", recordError.message);
+    console.error("Failed to persist analysis record or artifacts:", recordError.message);
   }
 
   try {

@@ -1001,6 +1001,89 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/{id}/analysis-artifacts:
+    get:
+      tags: [Videos]
+      summary: Listar artefactos de analisis persistidos por video
+      description: >
+        Devuelve el catalogo de archivos generados por los flujos de analisis
+        y almacenados en S3, incluyendo JSON, videos renderizados, imagenes
+        y otros artefactos.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Artefactos de analisis del video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisArtifactPaginatedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /videos/{id}/analyzeVideo/{jobId}/artifacts:
+    get:
+      tags: [Videos]
+      summary: Listar artefactos de analisis por job
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: jobId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Artefactos del job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisArtifactPaginatedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /match-sessions:
     post:
       tags: [Streaming]
@@ -2934,6 +3017,83 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/VideoAnalysisRecord"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    AnalysisArtifact:
+      type: object
+      properties:
+        _id:
+          type: string
+        videoId:
+          type: string
+        analysisJobId:
+          type: string
+        flow:
+          type: string
+          enum: [gemini, agent]
+        producer:
+          type: string
+          enum: [gemini, mcp_worker_agent, unknown]
+        artifactType:
+          type: string
+          enum: [json_result, json_stats, rendered_video, image, text_report, zip, other]
+        role:
+          type: string
+          enum: [primary_output, supporting_output, debug, preview, final_report]
+        promptKey:
+          type: string
+        promptVersion:
+          type: string
+        schemaName:
+          type: string
+        schemaVersion:
+          type: string
+        s3Bucket:
+          type: string
+        s3Key:
+          type: string
+        s3Uri:
+          type: string
+        mimeType:
+          type: string
+        fileSizeBytes:
+          type: number
+        filename:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        stepName:
+          type: string
+        toolName:
+          type: string
+        status:
+          type: string
+          enum: [generated, uploaded, failed]
+        isPrimary:
+          type: boolean
+        metadata:
+          type: object
+          additionalProperties: true
+        preview:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AnalysisArtifactPaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisArtifact"
         pagination:
           $ref: "#/components/schemas/PaginationMeta"
 
