@@ -6,7 +6,7 @@ dotenv.config();
 
 let running = true;
 
-const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
+const mongoUri = process.env.MONGO_URI;
 
 const stopWorker = async () => {
   running = false;
@@ -20,7 +20,7 @@ const stopWorker = async () => {
 
 const bootstrap = async () => {
   if (!mongoUri) {
-    throw new Error("MONGO_URI_3 or MONGO_URI must be configured");
+    throw new Error("MONGO_URI must be configured");
   }
 
   await mongoose.connect(mongoUri);

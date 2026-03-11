@@ -17,7 +17,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5001;
-const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
+const mongoUri = process.env.MONGO_URI;
 
 const defaultCorsOrigins = [
   "https://victory-craft-front.vercel.app",
@@ -91,7 +91,7 @@ if (mongoUri) {
     .then(() => console.log("✅ MongoDB Connected"))
     .catch((err) => console.error("MongoDB connection error:", err));
 } else {
-  console.warn("⚠️ MongoDB URI not found (MONGO_URI_3 or MONGO_URI).");
+  console.warn("⚠️ MongoDB URI not found (MONGO_URI).");
 }
 
 app.use("/concerts", concertRoutes);

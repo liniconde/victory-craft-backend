@@ -17,7 +17,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const workerAgentResultsConsumerService_1 = require("../services/workerAgentResultsConsumerService");
 dotenv_1.default.config();
 let running = true;
-const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
+const mongoUri = process.env.MONGO_URI;
 const stopWorker = () => __awaiter(void 0, void 0, void 0, function* () {
     running = false;
     try {
@@ -30,7 +30,7 @@ const stopWorker = () => __awaiter(void 0, void 0, void 0, function* () {
 });
 const bootstrap = () => __awaiter(void 0, void 0, void 0, function* () {
     if (!mongoUri) {
-        throw new Error("MONGO_URI_3 or MONGO_URI must be configured");
+        throw new Error("MONGO_URI must be configured");
     }
     yield mongoose_1.default.connect(mongoUri);
     console.log("MongoDB Connected (worker results consumer)");

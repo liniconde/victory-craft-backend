@@ -20,7 +20,7 @@ const streamingRoutes_1 = __importDefault(require("./routes/streamingRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
-const mongoUri = process.env.MONGO_URI_3 || process.env.MONGO_URI;
+const mongoUri = process.env.MONGO_URI;
 const defaultCorsOrigins = [
     "https://victory-craft-front.vercel.app",
     "https://victory-craft-front-spa.vercel.app",
@@ -84,7 +84,7 @@ if (mongoUri) {
         .catch((err) => console.error("MongoDB connection error:", err));
 }
 else {
-    console.warn("⚠️ MongoDB URI not found (MONGO_URI_3 or MONGO_URI).");
+    console.warn("⚠️ MongoDB URI not found (MONGO_URI).");
 }
 app.use("/concerts", concertRoutes_1.default);
 app.use("/images", imageRoutes_1.default);
