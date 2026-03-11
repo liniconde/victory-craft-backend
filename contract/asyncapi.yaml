@@ -1,0 +1,522 @@
+asyncapi: 3.0.0
+info:
+  title: MCP Worker Agent Event API
+  version: 1.0.0
+  description: |
+    AsyncAPI contract for integrating external services with the `mcp-worker-agent`
+    over AWS SQS.
+
+defaultContentType: application/json
+
+servers:
+  aws:
+    host: sqs.us-east-1.amazonaws.com
+    protocol: sqs
+    description: AWS SQS in us-east-1
+
+channels:
+  mcpWorkerAgentJobs:
+    address: futbol7-poc-mcp-worker-agent-jobs
+    messages:
+      workerInboundEvent:
+        $ref: '#/components/messages/WorkerInboundEvent'
+
+  mcpWorkerAgentResults:
+    address: futbol7-poc-mcp-worker-agent-results
+    messages:
+      workerResultEvent:
+        $ref: '#/components/messages/WorkerResultEvent'
+
+operations:
+  sendWorkerJob:
+    action: send
+    channel:
+      $ref: '#/channels/mcpWorkerAgentJobs'
+    title: Send a job to the worker-agent
+    summary: Publishes an inbound event that the worker-agent will consume from SQS.
+    messages:
+      - $ref: '#/channels/mcpWorkerAgentJobs/messages/workerInboundEvent'
+
+  receiveWorkerResult:
+    action: receive
+    channel:
+      $ref: '#/channels/mcpWorkerAgentResults'
+    title: Receive a worker-agent result
+    summary: Consumes the final result published by the worker-agent to SQS.
+    messages:
+      - $ref: '#/channels/mcpWorkerAgentResults/messages/workerResultEvent'
+
+components:
+  messages:
+    WorkerInboundEvent:
+      name: WorkerInboundEvent
+      title: Worker Inbound Event
+      summary: Event accepted by the worker-agent from the jobs queue.
+      correlationId:
+        location: $message.payload#/tracing/correlationId
+      payload:
+        $ref: '#/components/schemas/WorkerInboundEvent'
+      examples:
+        - name: VideoAnalysisRequested
+          summary: Example inbound event for video analysis.
+          payload:
+            contractVersion: '1.0'
+            eventId: evt_video_analysis_001
+            eventType: video.analysis.requested
+            occurredAt: '2026-03-07T12:00:00Z'
+            tracing:
+              requestId: req_video_analysis_001
+              correlationId: corr_video_analysis_001
+              traceId: trace_video_analysis_001
+            idempotencyKey: victorycraft:video-analysis:67e48d85ebfc561722a57a22:v1
+            retry:
+              attempt: 0
+              maxAttempts: 5
+            payload:
+              videoId: 67e48d85ebfc561722a57a22
+              jobId: job_video_analysis_001
+              prompt: Descarga el video desde S3, ejecuta render de detecciones YOLO con color de camiseta, genera un archivo JSON de estadísticas, sube los artifacts a S3 y analiza los artifacts generados para resumir si el procesamiento fue correcto y si hay hallazgos.
+              videoS3Uri: s3://victory-craft/videoFutbol2.mp4
+              outputS3Prefix: video-analysis-results/agent-e2e-001
+              localJobDir: /tmp/video-analysis/agent-e2e-001
+              render:
+                toolName: video.worker.render_yolo_boxes_with_jersey_color
+                outputDir: /tmp/video-analysis/agent-e2e-001/out
+                yoloModel: yolov8n.pt
+                processFps: 5
+                conf: 0.25
+              stats:
+                toolName: video.generate_stats_json
+                outputPath: /tmp/video-analysis/agent-e2e-001/out/stats.json
+              upload:
+                toolName: video.upload_artifacts_to_s3
+                bucket: victory-craft
+                destinationPrefix: video-analysis-results/agent-e2e-001
+              analysis:
+                toolName: video.analyze_generated_artifacts
+                analysisPrompt: Resume si los artefactos fueron generados correctamente y si hay hallazgos.
+
+    WorkerResultEvent:
+      name: WorkerResultEvent
+      title: Worker Result Event
+      summary: Final result published by the worker-agent to the results queue.
+      correlationId:
+        location: $message.payload#/output/correlationId
+      payload:
+        $ref: '#/components/schemas/WorkerResultEvent'
+      examples:
+        - name: WorkerResultSuccess
+          summary: Successful tool-augmented execution.
+          payload:
+            contractVersion: '1.0'
+            resultId: res_exec_evt_video_analysis_001_1772903641270
+            executionId: exec_evt_video_analysis_001
+            status: SUCCESS
+            summary: Video processed successfully.
+            output:
+              eventType: video.analysis.requested
+              status: completed
+              planId: plan_req_video_analysis_001
+              strategy: tool_augmented
+              toolCallCount: 5
+              toolSuccessCount: 5
+              toolFailureCount: 0
+              toolOutputs: []
+              artifacts:
+                - artifactId: art_render_yolo_boxes_render_mp4
+                  artifactType: rendered_video
+                  role: primary_output
+                  title: Rendered detections video
+                  filename: yolo_boxes_render.mp4
+                  stepName: render
+                  toolName: video.worker.render_yolo_boxes_with_jersey_color
+                  promptKey: video.analysis.requested
+                  promptVersion: v1
+                  storage:
+                    provider: s3
+                    status: uploaded
+                    s3Bucket: victory-craft
+                    s3Key: video-analysis-results/job-123/yolo_boxes_render.mp4
+                    s3Uri: s3://victory-craft/video-analysis-results/job-123/yolo_boxes_render.mp4
+                  mimeType: video/mp4
+                  isPrimary: true
+                  schemaName: analysis-artifact
+                  schemaVersion: '1.0'
+                  preview:
+                    durationSec: 95
+                  metadata:
+                    localPath: /tmp/video-analysis/job-123/out/yolo_boxes_render.mp4
+              operationalNotes:
+                - Download video from S3.
+                - Render YOLO detections with jersey color.
+                - Generate JSON statistics.
+                - Upload all generated artifacts to S3.
+                - Analyze the generated artifacts for findings.
+              requestId: req_video_analysis_001
+              correlationId: corr_video_analysis_001
+              producedAt: '2026-03-07T18:00:41.270Z'
+        - name: WorkerResultPartialSuccess
+          summary: Execution with some tool failures.
+          payload:
+            contractVersion: '1.0'
+            resultId: res_exec_evt_video_analysis_partial_001
+            executionId: exec_evt_video_analysis_partial_001
+            status: PARTIAL_SUCCESS
+            summary: Video processed with partial tool failures.
+            output:
+              eventType: video.analysis.requested
+              status: partial
+              planId: plan_req_video_analysis_partial_001
+              strategy: tool_augmented
+              toolCallCount: 5
+              toolSuccessCount: 4
+              toolFailureCount: 1
+              artifacts:
+                - artifactId: art_generate_stats_stats_json
+                  artifactType: json_stats
+                  role: supporting_output
+                  title: Match statistics
+                  filename: stats.json
+                  stepName: generate_stats
+                  toolName: video.generate_stats_json
+                  promptKey: video.analysis.requested
+                  promptVersion: v1
+                  storage:
+                    provider: s3
+                    status: uploaded
+                    s3Bucket: victory-craft
+                    s3Key: video-analysis-results/job-123/stats.json
+                    s3Uri: s3://victory-craft/video-analysis-results/job-123/stats.json
+                  mimeType: application/json
+                  isPrimary: true
+                  schemaName: match-stats
+                  schemaVersion: '1.0'
+                  preview:
+                    summary: Stats parciales disponibles
+                  metadata:
+                    localPath: /tmp/video-analysis/job-123/out/stats.json
+              toolOutputs:
+                - ok: false
+                  toolName: video.worker.render_yolo_boxes_with_jersey_color
+                  serverId: video-capabilities
+                  domain: video_render
+                  error:
+                    code: MCP_-32000
+                    message: render_yolo worker failed
+                    retryable: false
+              operationalNotes:
+                - Download video from S3.
+                - Tool video.worker.render_yolo_boxes_with_jersey_color failed for Render YOLO detections with jersey color on the downloaded video.: render_yolo worker failed.
+              requestId: req_video_analysis_partial_001
+              correlationId: corr_video_analysis_partial_001
+              producedAt: '2026-03-07T18:01:53.153Z'
+        - name: WorkerResultFailed
+          summary: Execution where all tool calls failed.
+          payload:
+            contractVersion: '1.0'
+            resultId: res_exec_evt_video_analysis_failed_001
+            executionId: exec_evt_video_analysis_failed_001
+            status: FAILED
+            summary: All tool calls failed.
+            output:
+              eventType: video.analysis.requested
+              status: failed
+              planId: plan_req_video_analysis_failed_001
+              strategy: tool_augmented
+              toolCallCount: 3
+              toolSuccessCount: 0
+              toolFailureCount: 3
+              artifacts:
+                - artifactId: art_download_input_mp4
+                  artifactType: other
+                  role: debug
+                  title: Failed pipeline artifact placeholder
+                  filename: input.mp4
+                  stepName: download
+                  toolName: video.download_from_s3
+                  promptKey: video.analysis.requested
+                  promptVersion: v1
+                  storage:
+                    provider: s3
+                    status: failed
+                  isPrimary: true
+                  schemaVersion: '1.0'
+                  preview:
+                    summary: No artifact could be produced because the download step failed.
+                  metadata:
+                    failureReason: invalid tool input
+              toolOutputs:
+                - ok: false
+                  toolName: video.download_from_s3
+                  serverId: video-capabilities
+                  domain: video_io
+                  error:
+                    code: MCP_-32000
+                    message: invalid tool input
+                    retryable: false
+              operationalNotes:
+                - Tool video.download_from_s3 failed for Download the video from S3 to the local job directory.: invalid tool input.
+              requestId: req_video_analysis_failed_001
+              correlationId: corr_video_analysis_failed_001
+              producedAt: '2026-03-07T18:02:00.000Z'
+        - name: WorkerResultFallback
+          summary: Fallback direct response when planning failed.
+          payload:
+            contractVersion: '1.0'
+            resultId: res_exec_evt_video_analysis_fallback_001
+            executionId: exec_evt_video_analysis_fallback_001
+            status: SUCCESS
+            summary: The model plan could not be used, so a direct fallback response was produced.
+            output:
+              eventType: video.analysis.requested
+              status: fallback
+              planId: plan_fallback_exec_evt_video_analysis_fallback_001
+              strategy: direct_response
+              toolCallCount: 0
+              toolSuccessCount: 0
+              toolFailureCount: 0
+              artifacts: []
+              toolOutputs: []
+              operationalNotes:
+                - Fallback plan used because the model response was unavailable or invalid.
+                - Prepared direct response for Return a direct fallback response.
+              requestId: req_video_analysis_fallback_001
+              correlationId: corr_video_analysis_fallback_001
+              producedAt: '2026-03-07T18:07:46.587Z'
+
+  schemas:
+    Tracing:
+      type: object
+      additionalProperties: true
+      required:
+        - requestId
+        - correlationId
+        - traceId
+      properties:
+        requestId:
+          type: string
+          minLength: 1
+        correlationId:
+          type: string
+          minLength: 1
+        traceId:
+          type: string
+          minLength: 1
+        spanId:
+          type:
+            - string
+            - 'null'
+
+    RetryPolicy:
+      type: object
+      additionalProperties: true
+      required:
+        - attempt
+        - maxAttempts
+      properties:
+        attempt:
+          type: integer
+          minimum: 0
+        maxAttempts:
+          type: integer
+          minimum: 1
+
+    WorkerInboundEvent:
+      type: object
+      additionalProperties: true
+      required:
+        - contractVersion
+        - eventId
+        - eventType
+        - occurredAt
+        - tracing
+        - idempotencyKey
+        - retry
+        - payload
+      properties:
+        contractVersion:
+          type: string
+          default: '1.0'
+        eventId:
+          type: string
+          minLength: 1
+        eventType:
+          type: string
+          minLength: 1
+          examples:
+            - video.analysis.requested
+        occurredAt:
+          type: string
+          format: date-time
+        tracing:
+          $ref: '#/components/schemas/Tracing'
+        idempotencyKey:
+          type: string
+          minLength: 1
+        retry:
+          $ref: '#/components/schemas/RetryPolicy'
+        payload:
+          type: object
+          additionalProperties: true
+
+    WorkerResultEvent:
+      type: object
+      additionalProperties: true
+      required:
+        - contractVersion
+        - resultId
+        - executionId
+        - status
+        - summary
+      properties:
+        contractVersion:
+          type: string
+          default: '1.0'
+        resultId:
+          type: string
+          minLength: 1
+        executionId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - SUCCESS
+            - PARTIAL_SUCCESS
+            - FAILED
+        summary:
+          type: string
+          minLength: 1
+        output:
+          type: object
+          additionalProperties: true
+          properties:
+            eventType:
+              type: string
+            status:
+              type: string
+            planId:
+              type: string
+            strategy:
+              type: string
+              enum:
+                - direct_response
+                - tool_augmented
+            toolCallCount:
+              type: integer
+              minimum: 0
+            toolSuccessCount:
+              type: integer
+              minimum: 0
+            toolFailureCount:
+              type: integer
+              minimum: 0
+            toolOutputs:
+              type: array
+            artifacts:
+              type: array
+              items:
+                $ref: '#/components/schemas/ArtifactManifestItem'
+            operationalNotes:
+              type: array
+              items:
+                type: string
+            requestId:
+              type: string
+            correlationId:
+              type: string
+            producedAt:
+              type: string
+              format: date-time
+
+    ArtifactStorage:
+      type: object
+      additionalProperties: false
+      required:
+        - provider
+        - status
+      properties:
+        provider:
+          type: string
+          enum:
+            - s3
+        status:
+          type: string
+          enum:
+            - generated
+            - uploaded
+            - failed
+        s3Bucket:
+          type: string
+        s3Key:
+          type: string
+        s3Uri:
+          type: string
+
+    ArtifactManifestItem:
+      type: object
+      additionalProperties: true
+      required:
+        - artifactId
+        - artifactType
+        - role
+        - filename
+        - stepName
+        - toolName
+        - storage
+        - isPrimary
+        - schemaVersion
+      properties:
+        artifactId:
+          type: string
+        artifactType:
+          type: string
+          enum:
+            - json_result
+            - json_stats
+            - rendered_video
+            - image
+            - text_report
+            - zip
+            - other
+        role:
+          type: string
+          enum:
+            - primary_output
+            - supporting_output
+            - debug
+            - preview
+            - final_report
+        title:
+          type: string
+        description:
+          type: string
+        filename:
+          type: string
+        stepName:
+          type: string
+        toolName:
+          type: string
+        promptKey:
+          type: string
+        promptVersion:
+          type: string
+        storage:
+          $ref: '#/components/schemas/ArtifactStorage'
+        mimeType:
+          type: string
+        fileSizeBytes:
+          type: integer
+          minimum: 0
+        isPrimary:
+          type: boolean
+        schemaName:
+          type: string
+        schemaVersion:
+          type: string
+        preview:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          additionalProperties: true

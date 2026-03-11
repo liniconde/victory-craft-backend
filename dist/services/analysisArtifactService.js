@@ -28,20 +28,23 @@ const assertObjectId = (value, code, message) => {
         throw new AnalysisArtifactServiceError(400, code, message);
     }
 };
+const toObjectId = (value) => new mongoose_1.default.Types.ObjectId(value);
+const buildCompatibleIdQuery = (value) => ({
+    $in: [value, toObjectId(value)],
+});
 const normalizeArtifact = (artifact) => ({
-    videoId: artifact.videoId,
-    analysisJobId: artifact.analysisJobId,
+    videoId: toObjectId(artifact.videoId),
+    analysisJobId: toObjectId(artifact.analysisJobId),
     flow: artifact.flow,
     producer: artifact.producer,
+    executionId: artifact.executionId,
+    resultId: artifact.resultId,
+    artifactId: artifact.artifactId,
     artifactType: artifact.artifactType,
     role: artifact.role || "supporting_output",
     promptKey: artifact.promptKey,
     promptVersion: artifact.promptVersion,
-    schemaName: artifact.schemaName,
-    schemaVersion: artifact.schemaVersion,
-    s3Bucket: artifact.s3Bucket,
-    s3Key: artifact.s3Key,
-    s3Uri: artifact.s3Uri,
+    storage: artifact.storage,
     mimeType: artifact.mimeType,
     fileSizeBytes: artifact.fileSizeBytes,
     filename: artifact.filename,
@@ -49,10 +52,16 @@ const normalizeArtifact = (artifact) => ({
     description: artifact.description,
     stepName: artifact.stepName,
     toolName: artifact.toolName,
-    status: artifact.status || "uploaded",
-    isPrimary: artifact.isPrimary || false,
+    isPrimary: artifact.isPrimary,
+    schemaName: artifact.schemaName,
+    schemaVersion: artifact.schemaVersion,
     metadata: artifact.metadata || {},
     preview: artifact.preview || {},
+    requestId: artifact.requestId,
+    correlationId: artifact.correlationId,
+    resultStatus: artifact.resultStatus,
+    summary: artifact.summary,
+    producedAt: new Date(artifact.producedAt),
 });
 const upsertAnalysisArtifacts = (artifacts) => __awaiter(void 0, void 0, void 0, function* () {
     if (!artifacts.length) {
@@ -61,8 +70,8 @@ const upsertAnalysisArtifacts = (artifacts) => __awaiter(void 0, void 0, void 0,
     const operations = artifacts.map((artifact) => ({
         updateOne: {
             filter: {
-                analysisJobId: artifact.analysisJobId,
-                s3Key: artifact.s3Key,
+                executionId: artifact.executionId,
+                artifactId: artifact.artifactId,
             },
             update: {
                 $set: normalizeArtifact(artifact),
@@ -71,10 +80,10 @@ const upsertAnalysisArtifacts = (artifacts) => __awaiter(void 0, void 0, void 0,
         },
     }));
     yield AnalysisArtifact_1.default.bulkWrite(operations);
-    const keys = artifacts.map((artifact) => artifact.s3Key);
+    const artifactIds = artifacts.map((artifact) => artifact.artifactId);
     const docs = yield AnalysisArtifact_1.default.find({
-        analysisJobId: artifacts[0].analysisJobId,
-        s3Key: { $in: keys },
+        executionId: artifacts[0].executionId,
+        artifactId: { $in: artifactIds },
     }).sort({ createdAt: 1 });
     return docs.map((doc) => (doc.toObject ? doc.toObject() : doc));
 });
@@ -85,8 +94,11 @@ const listAnalysisArtifactsByVideoId = (videoId, options) => __awaiter(void 0, v
     const limit = Math.min(100, Math.max(1, (options === null || options === void 0 ? void 0 : options.limit) || 20));
     const skip = (page - 1) * limit;
     const [items, total] = yield Promise.all([
-        AnalysisArtifact_1.default.find({ videoId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
-        AnalysisArtifact_1.default.countDocuments({ videoId }),
+        AnalysisArtifact_1.default.find({ videoId: buildCompatibleIdQuery(videoId) })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        AnalysisArtifact_1.default.countDocuments({ videoId: buildCompatibleIdQuery(videoId) }),
     ]);
     return {
         items: items.map((item) => (item.toObject ? item.toObject() : item)),
@@ -107,8 +119,11 @@ const listAnalysisArtifactsByJobId = (analysisJobId, options) => __awaiter(void 
     const limit = Math.min(100, Math.max(1, (options === null || options === void 0 ? void 0 : options.limit) || 20));
     const skip = (page - 1) * limit;
     const [items, total] = yield Promise.all([
-        AnalysisArtifact_1.default.find({ analysisJobId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
-        AnalysisArtifact_1.default.countDocuments({ analysisJobId }),
+        AnalysisArtifact_1.default.find({ analysisJobId: buildCompatibleIdQuery(analysisJobId) })
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit),
+        AnalysisArtifact_1.default.countDocuments({ analysisJobId: buildCompatibleIdQuery(analysisJobId) }),
     ]);
     return {
         items: items.map((item) => (item.toObject ? item.toObject() : item)),

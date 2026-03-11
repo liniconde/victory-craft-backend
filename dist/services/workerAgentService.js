@@ -45,7 +45,7 @@ const buildS3Uri = (params) => {
     }
     return `s3://${bucketName}/${params.s3Key}`;
 };
-const createIdempotencyKey = (params) => `${params.tenant}:${params.eventType}:${params.businessEntityId}:${params.version || "v1"}`;
+const createIdempotencyKey = (params) => `${params.tenant}:${params.analysisJobId}:${params.version || "v1"}`;
 const buildDefaultPayload = (params) => {
     var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l, _m;
     const outputDir = ((_a = params.overrides.render) === null || _a === void 0 ? void 0 : _a.outputDir) || `${params.localJobDir}/out`;
@@ -95,97 +95,81 @@ const mapWorkerResultToJobStatus = (status) => {
     return "completed";
 };
 const buildAgentNotificationMetadata = (params) => (Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ flow: "agent", provider: "mcp_worker_agent", stage: params.stage }, (params.eventType ? { eventType: params.eventType } : {})), (params.requestId ? { requestId: params.requestId } : {})), (params.correlationId ? { correlationId: params.correlationId } : {})), (params.traceId ? { traceId: params.traceId } : {})), (params.eventId ? { eventId: params.eventId } : {})), (params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : {})), (params.executionId ? { executionId: params.executionId } : {})), (params.resultId ? { resultId: params.resultId } : {})), (params.workerStatus ? { workerStatus: params.workerStatus } : {})), (params.summary ? { summary: params.summary } : {})));
-const tryBuildArtifactFromCandidate = (params) => {
-    const candidate = params.candidate || {};
-    const s3Uri = typeof candidate.s3Uri === "string"
-        ? candidate.s3Uri
-        : typeof candidate.uri === "string" && candidate.uri.startsWith("s3://")
-            ? candidate.uri
-            : undefined;
-    const s3Key = typeof candidate.s3Key === "string"
-        ? candidate.s3Key
-        : typeof candidate.key === "string"
-            ? candidate.key
-            : s3Uri === null || s3Uri === void 0 ? void 0 : s3Uri.replace(/^s3:\/\/[^/]+\//, "");
-    const s3Bucket = typeof candidate.s3Bucket === "string"
-        ? candidate.s3Bucket
-        : typeof candidate.bucket === "string"
-            ? candidate.bucket
-            : s3Uri === null || s3Uri === void 0 ? void 0 : s3Uri.replace(/^s3:\/\//, "").split("/")[0];
-    if (!s3Key || !s3Bucket) {
-        return null;
-    }
-    const inferredUri = s3Uri || `s3://${s3Bucket}/${s3Key}`;
-    const fileName = typeof candidate.filename === "string" ? candidate.filename : s3Key.split("/").pop();
-    const artifactType = (typeof candidate.artifactType === "string"
-        ? candidate.artifactType
-        : typeof candidate.type === "string"
-            ? candidate.type
-            : "other");
-    const role = (typeof candidate.role === "string" ? candidate.role : "supporting_output");
+const mapArtifactManifestToProjection = (artifact) => ({
+    artifactId: artifact.artifactId,
+    artifactType: artifact.artifactType,
+    role: artifact.role,
+    title: artifact.title,
+    description: artifact.description,
+    filename: artifact.filename,
+    stepName: artifact.stepName,
+    toolName: artifact.toolName,
+    isPrimary: artifact.isPrimary,
+    mimeType: artifact.mimeType,
+    storage: artifact.storage,
+    preview: artifact.preview || {},
+});
+const mapArtifactManifestToPersistence = (params) => {
+    const artifact = params.artifact;
     return {
         videoId: params.videoId,
         analysisJobId: params.analysisJobId,
         flow: "agent",
         producer: "mcp_worker_agent",
-        artifactType,
-        role,
-        promptKey: typeof candidate.promptKey === "string" ? candidate.promptKey : undefined,
-        promptVersion: typeof candidate.promptVersion === "string" ? candidate.promptVersion : undefined,
-        schemaName: typeof candidate.schemaName === "string" ? candidate.schemaName : undefined,
-        schemaVersion: typeof candidate.schemaVersion === "string" ? candidate.schemaVersion : undefined,
-        s3Bucket,
-        s3Key,
-        s3Uri: inferredUri,
-        mimeType: typeof candidate.mimeType === "string" ? candidate.mimeType : undefined,
-        fileSizeBytes: typeof candidate.fileSizeBytes === "number" ? candidate.fileSizeBytes : undefined,
-        filename: fileName,
-        title: typeof candidate.title === "string" ? candidate.title : undefined,
-        description: typeof candidate.description === "string" ? candidate.description : undefined,
-        stepName: typeof candidate.stepName === "string" ? candidate.stepName : params.fallbackStepName,
-        toolName: typeof candidate.toolName === "string" ? candidate.toolName : params.fallbackToolName,
-        status: (typeof candidate.status === "string" ? candidate.status : "uploaded"),
-        isPrimary: Boolean(candidate.isPrimary),
-        metadata: typeof candidate.metadata === "object" && candidate.metadata ? candidate.metadata : {},
-        preview: typeof candidate.preview === "object" && candidate.preview ? candidate.preview : {},
+        executionId: params.executionId,
+        resultId: params.resultId,
+        artifactId: artifact.artifactId,
+        artifactType: artifact.artifactType,
+        role: artifact.role,
+        promptKey: artifact.promptKey,
+        promptVersion: artifact.promptVersion,
+        storage: {
+            provider: "s3",
+            status: artifact.storage.status,
+            s3Bucket: artifact.storage.s3Bucket,
+            s3Key: artifact.storage.s3Key,
+            s3Uri: artifact.storage.s3Uri,
+        },
+        mimeType: artifact.mimeType,
+        fileSizeBytes: artifact.fileSizeBytes,
+        filename: artifact.filename,
+        title: artifact.title,
+        description: artifact.description,
+        stepName: artifact.stepName,
+        toolName: artifact.toolName,
+        isPrimary: artifact.isPrimary,
+        schemaName: artifact.schemaName,
+        schemaVersion: artifact.schemaVersion,
+        metadata: artifact.metadata || {},
+        preview: artifact.preview || {},
+        requestId: params.requestId,
+        correlationId: params.correlationId,
+        resultStatus: params.resultStatus,
+        summary: params.summary,
+        producedAt: params.producedAt,
     };
 };
+const buildWorkerFrontendProjection = (params) => ({
+    summary: params.result.summary,
+    status: params.result.status,
+    primaryArtifact: params.artifacts.find((artifact) => artifact.isPrimary) ||
+        params.artifacts[0] ||
+        null,
+    artifacts: params.artifacts.map(mapArtifactManifestToProjection),
+});
 const extractArtifactsFromWorkerResult = (params) => {
-    const candidates = [];
-    const directArtifacts = Array.isArray(params.output.artifacts) ? params.output.artifacts : [];
-    for (const artifact of directArtifacts) {
-        if (artifact && typeof artifact === "object") {
-            candidates.push(artifact);
-        }
-    }
-    const toolOutputs = Array.isArray(params.output.toolOutputs) ? params.output.toolOutputs : [];
-    for (const toolOutput of toolOutputs) {
-        if (!toolOutput || typeof toolOutput !== "object") {
-            continue;
-        }
-        const nestedArtifacts = Array.isArray(toolOutput.artifacts)
-            ? toolOutput.artifacts
-            : [];
-        for (const artifact of nestedArtifacts) {
-            if (artifact && typeof artifact === "object") {
-                candidates.push(Object.assign(Object.assign({}, artifact), { toolName: typeof toolOutput.toolName === "string"
-                        ? toolOutput.toolName
-                        : artifact.toolName, stepName: typeof toolOutput.stepName === "string"
-                        ? toolOutput.stepName
-                        : artifact.stepName }));
-            }
-        }
-        candidates.push(toolOutput);
-    }
-    return candidates
-        .map((candidate) => tryBuildArtifactFromCandidate({
+    return params.result.output.artifacts.map((artifact) => mapArtifactManifestToPersistence({
         videoId: params.videoId,
         analysisJobId: params.analysisJobId,
-        candidate,
-        fallbackToolName: typeof candidate.toolName === "string" ? candidate.toolName : undefined,
-        fallbackStepName: typeof candidate.stepName === "string" ? candidate.stepName : undefined,
-    }))
-        .filter(Boolean);
+        executionId: params.result.executionId,
+        resultId: params.result.resultId,
+        requestId: params.result.output.requestId,
+        correlationId: params.result.output.correlationId,
+        resultStatus: params.result.status,
+        summary: params.result.summary,
+        producedAt: params.result.output.producedAt,
+        artifact,
+    }));
 };
 const createWorkerVideoAnalysisJob = (videoId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     toObjectId(videoId, "video_id");
@@ -219,8 +203,7 @@ const createWorkerVideoAnalysisJob = (videoId, payload) => __awaiter(void 0, voi
             maxAttempts: payload.maxAttempts,
             idempotencyKey: createIdempotencyKey({
                 tenant: "victorycraft",
-                eventType,
-                businessEntityId: videoId,
+                analysisJobId: String(job._id),
             }),
             payload: buildDefaultPayload({
                 videoId,
@@ -233,7 +216,25 @@ const createWorkerVideoAnalysisJob = (videoId, payload) => __awaiter(void 0, voi
                 overrides: payload,
             }),
         });
+        console.log("[worker-agent-service] enqueue.start", {
+            analysisJobId: String(job._id),
+            videoId,
+            eventId: workerEvent.eventId,
+            eventType,
+            requestId: workerEvent.tracing.requestId,
+            correlationId: workerEvent.tracing.correlationId,
+            traceId: workerEvent.tracing.traceId,
+            idempotencyKey: workerEvent.idempotencyKey,
+        });
         const response = yield (0, workerAgentSqsService_1.sendWorkerEvent)(workerEvent);
+        console.log("[worker-agent-service] enqueue.success", {
+            analysisJobId: String(job._id),
+            videoId,
+            sqsMessageId: response.messageId,
+            eventId: workerEvent.eventId,
+            requestId: workerEvent.tracing.requestId,
+            correlationId: workerEvent.tracing.correlationId,
+        });
         const updated = yield AnalysisJob_1.default.findByIdAndUpdate(job._id, {
             sqsMessageId: response.messageId,
             workerEventId: workerEvent.eventId,
@@ -296,22 +297,34 @@ const interpretWorkerResult = (message) => {
 };
 exports.interpretWorkerResult = interpretWorkerResult;
 const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
+    var _a, _b;
     const parsed = workerAgentContracts_1.workerResultEventSchema.parse(resultEvent);
     const requestId = parsed.output.requestId;
     const correlationId = parsed.output.correlationId;
-    if (!requestId && !correlationId) {
-        throw new WorkerAgentServiceError(400, "missing_result_correlation", "Worker result must include output.requestId or output.correlationId");
-    }
+    const artifacts = parsed.output.artifacts;
+    const frontendProjection = buildWorkerFrontendProjection({
+        result: parsed,
+        artifacts,
+    });
     const job = yield AnalysisJob_1.default.findOne({
         $or: [
-            ...(requestId ? [{ workerRequestId: requestId }] : []),
-            ...(correlationId ? [{ workerCorrelationId: correlationId }] : []),
+            { workerRequestId: requestId },
+            { workerCorrelationId: correlationId },
         ],
     });
     if (!job) {
         throw new WorkerAgentServiceError(404, "analysis_job_not_found", `No analysis job found for requestId=${requestId || "n/a"} correlationId=${correlationId || "n/a"}`);
     }
+    console.log("[worker-agent-service] result.apply.start", {
+        eventId: parsed.eventId,
+        requestId,
+        correlationId,
+        executionId: parsed.executionId,
+        resultId: parsed.resultId,
+        status: parsed.status,
+        analysisJobId: String(job._id),
+        videoId: String(job.videoId),
+    });
     const newStatus = mapWorkerResultToJobStatus(parsed.status);
     try {
         yield (0, notificationService_1.createNotification)({
@@ -341,19 +354,32 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
         workerExecutionId: parsed.executionId,
         workerResultId: parsed.resultId,
         workerResultStatus: parsed.status,
+        workerProducedAt: new Date(parsed.output.producedAt),
+        workerSummary: parsed.summary,
+        primaryArtifact: frontendProjection.primaryArtifact,
+        artifacts: frontendProjection.artifacts,
     }, { new: true });
+    console.log("[worker-agent-service] result.apply.updated_job", {
+        analysisJobId: String(job._id),
+        videoId: String(job.videoId),
+        status: newStatus,
+        workerStatus: parsed.status,
+        executionId: parsed.executionId,
+        resultId: parsed.resultId,
+        artifactCount: artifacts.length,
+    });
     try {
-        const artifacts = extractArtifactsFromWorkerResult({
+        const artifactRows = extractArtifactsFromWorkerResult({
             videoId: String(job.videoId),
             analysisJobId: String(job._id),
-            output: (parsed.output || {}),
+            result: parsed,
         });
         yield (0, videoAnalysisRecordService_1.createVideoAnalysisRecord)({
             videoId: String(job.videoId),
             analysisJobId: String(job._id),
             analysisType: job.analysisType,
             input: job.input || {},
-            output: parsed.output || {},
+            output: Object.assign(Object.assign({}, parsed.output), { frontendProjection }),
             extraParams: {
                 source: "mcp_worker_agent",
                 summary: parsed.summary,
@@ -361,14 +387,16 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
                 resultId: parsed.resultId,
                 requestId,
                 correlationId,
+                status: parsed.status,
+                producedAt: parsed.output.producedAt,
             },
             artifactSummary: {
                 count: artifacts.length,
-                primaryArtifactS3Key: (_a = artifacts.find((artifact) => artifact.isPrimary)) === null || _a === void 0 ? void 0 : _a.s3Key,
+                primaryArtifactS3Key: (_b = (_a = frontendProjection.primaryArtifact) === null || _a === void 0 ? void 0 : _a.storage) === null || _b === void 0 ? void 0 : _b.s3Key,
             },
         });
-        if (artifacts.length) {
-            yield (0, analysisArtifactService_1.upsertAnalysisArtifacts)(artifacts);
+        if (artifactRows.length) {
+            yield (0, analysisArtifactService_1.upsertAnalysisArtifacts)(artifactRows);
         }
     }
     catch (recordError) {

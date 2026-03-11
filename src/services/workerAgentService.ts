@@ -3,8 +3,10 @@ import mongoose from "mongoose";
 import AnalysisJob from "../models/AnalysisJob";
 import Video from "../models/Video";
 import {
+  ArtifactManifestItem,
   WorkerInboundEvent,
   WorkerResultEvent,
+  WorkerResultOutput,
   WorkerResultStatus,
   WorkerVideoAnalysisPayload,
   workerResultEventSchema,
@@ -78,10 +80,9 @@ const buildS3Uri = (params: { s3Url?: string; s3Key?: string }) => {
 
 const createIdempotencyKey = (params: {
   tenant: string;
-  eventType: string;
-  businessEntityId: string;
+  analysisJobId: string;
   version?: string;
-}) => `${params.tenant}:${params.eventType}:${params.businessEntityId}:${params.version || "v1"}`;
+}) => `${params.tenant}:${params.analysisJobId}:${params.version || "v1"}`;
 
 const buildDefaultPayload = (params: {
   videoId: string;
@@ -201,138 +202,106 @@ const buildAgentNotificationMetadata = (params: {
   ...(params.summary ? { summary: params.summary } : {}),
 });
 
-const tryBuildArtifactFromCandidate = (params: {
+const mapArtifactManifestToProjection = (artifact: ArtifactManifestItem) => ({
+  artifactId: artifact.artifactId,
+  artifactType: artifact.artifactType,
+  role: artifact.role,
+  title: artifact.title,
+  description: artifact.description,
+  filename: artifact.filename,
+  stepName: artifact.stepName,
+  toolName: artifact.toolName,
+  isPrimary: artifact.isPrimary,
+  mimeType: artifact.mimeType,
+  storage: artifact.storage,
+  preview: artifact.preview || {},
+});
+
+const mapArtifactManifestToPersistence = (params: {
   videoId: string;
   analysisJobId: string;
-  candidate: Record<string, any>;
-  fallbackToolName?: string;
-  fallbackStepName?: string;
+  executionId: string;
+  resultId: string;
+  requestId: string;
+  correlationId: string;
+  resultStatus: WorkerResultStatus;
+  summary: string;
+  producedAt: string;
+  artifact: ArtifactManifestItem;
 }) => {
-  const candidate = params.candidate || {};
-  const s3Uri =
-    typeof candidate.s3Uri === "string"
-      ? candidate.s3Uri
-      : typeof candidate.uri === "string" && candidate.uri.startsWith("s3://")
-        ? candidate.uri
-        : undefined;
-  const s3Key =
-    typeof candidate.s3Key === "string"
-      ? candidate.s3Key
-      : typeof candidate.key === "string"
-        ? candidate.key
-        : s3Uri?.replace(/^s3:\/\/[^/]+\//, "");
-  const s3Bucket =
-    typeof candidate.s3Bucket === "string"
-      ? candidate.s3Bucket
-      : typeof candidate.bucket === "string"
-        ? candidate.bucket
-        : s3Uri?.replace(/^s3:\/\//, "").split("/")[0];
-
-  if (!s3Key || !s3Bucket) {
-    return null;
-  }
-
-  const inferredUri = s3Uri || `s3://${s3Bucket}/${s3Key}`;
-  const fileName =
-    typeof candidate.filename === "string" ? candidate.filename : s3Key.split("/").pop();
-  const artifactType = (
-    typeof candidate.artifactType === "string"
-      ? candidate.artifactType
-      : typeof candidate.type === "string"
-        ? candidate.type
-        : "other"
-  ) as "json_result" | "json_stats" | "rendered_video" | "image" | "text_report" | "zip" | "other";
-  const role = (
-    typeof candidate.role === "string" ? candidate.role : "supporting_output"
-  ) as "primary_output" | "supporting_output" | "debug" | "preview" | "final_report";
+  const artifact = params.artifact;
 
   return {
     videoId: params.videoId,
     analysisJobId: params.analysisJobId,
     flow: "agent" as const,
     producer: "mcp_worker_agent" as const,
-    artifactType,
-    role,
-    promptKey: typeof candidate.promptKey === "string" ? candidate.promptKey : undefined,
-    promptVersion: typeof candidate.promptVersion === "string" ? candidate.promptVersion : undefined,
-    schemaName: typeof candidate.schemaName === "string" ? candidate.schemaName : undefined,
-    schemaVersion: typeof candidate.schemaVersion === "string" ? candidate.schemaVersion : undefined,
-    s3Bucket,
-    s3Key,
-    s3Uri: inferredUri,
-    mimeType: typeof candidate.mimeType === "string" ? candidate.mimeType : undefined,
-    fileSizeBytes: typeof candidate.fileSizeBytes === "number" ? candidate.fileSizeBytes : undefined,
-    filename: fileName,
-    title: typeof candidate.title === "string" ? candidate.title : undefined,
-    description: typeof candidate.description === "string" ? candidate.description : undefined,
-    stepName:
-      typeof candidate.stepName === "string" ? candidate.stepName : params.fallbackStepName,
-    toolName:
-      typeof candidate.toolName === "string" ? candidate.toolName : params.fallbackToolName,
-    status: (
-      typeof candidate.status === "string" ? candidate.status : "uploaded"
-    ) as "generated" | "uploaded" | "failed",
-    isPrimary: Boolean(candidate.isPrimary),
-    metadata:
-      typeof candidate.metadata === "object" && candidate.metadata ? candidate.metadata : {},
-    preview:
-      typeof candidate.preview === "object" && candidate.preview ? candidate.preview : {},
+    executionId: params.executionId,
+    resultId: params.resultId,
+    artifactId: artifact.artifactId,
+    artifactType: artifact.artifactType,
+    role: artifact.role,
+    promptKey: artifact.promptKey,
+    promptVersion: artifact.promptVersion,
+    storage: {
+      provider: "s3" as const,
+      status: artifact.storage.status,
+      s3Bucket: artifact.storage.s3Bucket,
+      s3Key: artifact.storage.s3Key,
+      s3Uri: artifact.storage.s3Uri,
+    },
+    mimeType: artifact.mimeType,
+    fileSizeBytes: artifact.fileSizeBytes,
+    filename: artifact.filename,
+    title: artifact.title,
+    description: artifact.description,
+    stepName: artifact.stepName,
+    toolName: artifact.toolName,
+    isPrimary: artifact.isPrimary,
+    schemaName: artifact.schemaName,
+    schemaVersion: artifact.schemaVersion,
+    metadata: artifact.metadata || {},
+    preview: artifact.preview || {},
+    requestId: params.requestId,
+    correlationId: params.correlationId,
+    resultStatus: params.resultStatus,
+    summary: params.summary,
+    producedAt: params.producedAt,
   };
 };
+
+const buildWorkerFrontendProjection = (params: {
+  result: WorkerResultEvent;
+  artifacts: ArtifactManifestItem[];
+}) => ({
+  summary: params.result.summary,
+  status: params.result.status,
+  primaryArtifact:
+    params.artifacts.find((artifact) => artifact.isPrimary) ||
+    params.artifacts[0] ||
+    null,
+  artifacts: params.artifacts.map(mapArtifactManifestToProjection),
+});
 
 const extractArtifactsFromWorkerResult = (params: {
   videoId: string;
   analysisJobId: string;
-  output: Record<string, any>;
+  result: WorkerResultEvent;
 }) => {
-  const candidates: Array<Record<string, any>> = [];
-  const directArtifacts = Array.isArray(params.output.artifacts) ? params.output.artifacts : [];
-
-  for (const artifact of directArtifacts) {
-    if (artifact && typeof artifact === "object") {
-      candidates.push(artifact);
-    }
-  }
-
-  const toolOutputs = Array.isArray(params.output.toolOutputs) ? params.output.toolOutputs : [];
-  for (const toolOutput of toolOutputs) {
-    if (!toolOutput || typeof toolOutput !== "object") {
-      continue;
-    }
-
-    const nestedArtifacts = Array.isArray((toolOutput as any).artifacts)
-      ? (toolOutput as any).artifacts
-      : [];
-    for (const artifact of nestedArtifacts) {
-      if (artifact && typeof artifact === "object") {
-        candidates.push({
-          ...artifact,
-          toolName:
-            typeof (toolOutput as any).toolName === "string"
-              ? (toolOutput as any).toolName
-              : (artifact as any).toolName,
-          stepName:
-            typeof (toolOutput as any).stepName === "string"
-              ? (toolOutput as any).stepName
-              : (artifact as any).stepName,
-        });
-      }
-    }
-
-    candidates.push(toolOutput as Record<string, any>);
-  }
-
-  return candidates
-    .map((candidate) =>
-      tryBuildArtifactFromCandidate({
-        videoId: params.videoId,
-        analysisJobId: params.analysisJobId,
-        candidate,
-        fallbackToolName: typeof candidate.toolName === "string" ? candidate.toolName : undefined,
-        fallbackStepName: typeof candidate.stepName === "string" ? candidate.stepName : undefined,
-      }),
-    )
-    .filter(Boolean);
+  return params.result.output.artifacts.map((artifact) =>
+    mapArtifactManifestToPersistence({
+      videoId: params.videoId,
+      analysisJobId: params.analysisJobId,
+      executionId: params.result.executionId,
+      resultId: params.result.resultId,
+      requestId: params.result.output.requestId,
+      correlationId: params.result.output.correlationId,
+      resultStatus: params.result.status,
+      summary: params.result.summary,
+      producedAt: params.result.output.producedAt,
+      artifact,
+    }),
+  );
 };
 
 export const createWorkerVideoAnalysisJob = async (
@@ -380,8 +349,7 @@ export const createWorkerVideoAnalysisJob = async (
       maxAttempts: payload.maxAttempts,
       idempotencyKey: createIdempotencyKey({
         tenant: "victorycraft",
-        eventType,
-        businessEntityId: videoId,
+        analysisJobId: String(job._id),
       }),
       payload: buildDefaultPayload({
         videoId,
@@ -395,7 +363,27 @@ export const createWorkerVideoAnalysisJob = async (
       }),
     });
 
+    console.log("[worker-agent-service] enqueue.start", {
+      analysisJobId: String(job._id),
+      videoId,
+      eventId: workerEvent.eventId,
+      eventType,
+      requestId: workerEvent.tracing.requestId,
+      correlationId: workerEvent.tracing.correlationId,
+      traceId: workerEvent.tracing.traceId,
+      idempotencyKey: workerEvent.idempotencyKey,
+    });
+
     const response = await sendWorkerEvent(workerEvent);
+
+    console.log("[worker-agent-service] enqueue.success", {
+      analysisJobId: String(job._id),
+      videoId,
+      sqsMessageId: response.messageId,
+      eventId: workerEvent.eventId,
+      requestId: workerEvent.tracing.requestId,
+      correlationId: workerEvent.tracing.correlationId,
+    });
 
     const updated = await AnalysisJob.findByIdAndUpdate(
       job._id,
@@ -485,19 +473,16 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
   const parsed = workerResultEventSchema.parse(resultEvent);
   const requestId = parsed.output.requestId;
   const correlationId = parsed.output.correlationId;
-
-  if (!requestId && !correlationId) {
-    throw new WorkerAgentServiceError(
-      400,
-      "missing_result_correlation",
-      "Worker result must include output.requestId or output.correlationId",
-    );
-  }
+  const artifacts = parsed.output.artifacts;
+  const frontendProjection = buildWorkerFrontendProjection({
+    result: parsed,
+    artifacts,
+  });
 
   const job = await AnalysisJob.findOne({
     $or: [
-      ...(requestId ? [{ workerRequestId: requestId }] : []),
-      ...(correlationId ? [{ workerCorrelationId: correlationId }] : []),
+      { workerRequestId: requestId },
+      { workerCorrelationId: correlationId },
     ],
   });
 
@@ -508,6 +493,17 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
       `No analysis job found for requestId=${requestId || "n/a"} correlationId=${correlationId || "n/a"}`,
     );
   }
+
+  console.log("[worker-agent-service] result.apply.start", {
+    eventId: parsed.eventId,
+    requestId,
+    correlationId,
+    executionId: parsed.executionId,
+    resultId: parsed.resultId,
+    status: parsed.status,
+    analysisJobId: String(job._id),
+    videoId: String(job.videoId),
+  });
 
   const newStatus = mapWorkerResultToJobStatus(parsed.status);
 
@@ -541,15 +537,29 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
       workerExecutionId: parsed.executionId,
       workerResultId: parsed.resultId,
       workerResultStatus: parsed.status,
+      workerProducedAt: new Date(parsed.output.producedAt),
+      workerSummary: parsed.summary,
+      primaryArtifact: frontendProjection.primaryArtifact,
+      artifacts: frontendProjection.artifacts,
     },
     { new: true },
   );
 
+  console.log("[worker-agent-service] result.apply.updated_job", {
+    analysisJobId: String(job._id),
+    videoId: String(job.videoId),
+    status: newStatus,
+    workerStatus: parsed.status,
+    executionId: parsed.executionId,
+    resultId: parsed.resultId,
+    artifactCount: artifacts.length,
+  });
+
   try {
-    const artifacts = extractArtifactsFromWorkerResult({
+    const artifactRows = extractArtifactsFromWorkerResult({
       videoId: String(job.videoId),
       analysisJobId: String(job._id),
-      output: (parsed.output || {}) as Record<string, any>,
+      result: parsed,
     });
 
     await createVideoAnalysisRecord({
@@ -557,7 +567,10 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
       analysisJobId: String(job._id),
       analysisType: job.analysisType,
       input: job.input || {},
-      output: parsed.output || {},
+      output: {
+        ...parsed.output,
+        frontendProjection,
+      } as WorkerResultOutput,
       extraParams: {
         source: "mcp_worker_agent",
         summary: parsed.summary,
@@ -565,15 +578,18 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
         resultId: parsed.resultId,
         requestId,
         correlationId,
+        status: parsed.status,
+        producedAt: parsed.output.producedAt,
       },
       artifactSummary: {
         count: artifacts.length,
-        primaryArtifactS3Key: artifacts.find((artifact) => artifact.isPrimary)?.s3Key,
+        primaryArtifactS3Key:
+          frontendProjection.primaryArtifact?.storage?.s3Key,
       },
     });
 
-    if (artifacts.length) {
-      await upsertAnalysisArtifacts(artifacts);
+    if (artifactRows.length) {
+      await upsertAnalysisArtifacts(artifactRows);
     }
   } catch (recordError: any) {
     console.error("Failed to persist analysis record or artifacts:", recordError.message);

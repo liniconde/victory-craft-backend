@@ -25,6 +25,10 @@ interface IAnalysisJob extends Document {
   workerExecutionId?: string;
   workerResultId?: string;
   workerResultStatus?: "SUCCESS" | "PARTIAL_SUCCESS" | "FAILED";
+  workerProducedAt?: Date;
+  workerSummary?: string;
+  primaryArtifact?: Record<string, any>;
+  artifacts?: Record<string, any>;
   startedAt?: Date;
   completedAt?: Date;
   createdAt: Date;
@@ -63,6 +67,10 @@ const AnalysisJobSchema = new Schema<IAnalysisJob>(
       enum: ["SUCCESS", "PARTIAL_SUCCESS", "FAILED"],
       required: false,
     },
+    workerProducedAt: { type: Date, required: false },
+    workerSummary: { type: String, required: false },
+    primaryArtifact: { type: Schema.Types.Mixed, required: false },
+    artifacts: { type: Schema.Types.Mixed, required: false },
     startedAt: { type: Date, required: false },
     completedAt: { type: Date, required: false },
   },

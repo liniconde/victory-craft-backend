@@ -18,6 +18,9 @@ const client_sqs_1 = require("@aws-sdk/client-sqs");
 const workerAgentContracts_1 = require("../contracts/workerAgentContracts");
 dotenv_1.default.config();
 let sqsClient = null;
+const logWorkerSqs = (stage, metadata = {}) => {
+    console.log(`[worker-agent-sqs] ${stage}`, metadata);
+};
 const getSqsClient = () => {
     if (sqsClient) {
         return sqsClient;
@@ -46,40 +49,95 @@ const getRequiredQueueUrl = (envName) => {
 };
 const sendWorkerEvent = (event) => __awaiter(void 0, void 0, void 0, function* () {
     const parsedEvent = workerAgentContracts_1.workerInboundEventSchema.parse(event);
+    const queueUrl = getRequiredQueueUrl("MCP_WORKER_AGENT_JOBS_SQS_URL");
+    logWorkerSqs("send.start", {
+        queueUrl,
+        eventId: parsedEvent.eventId,
+        eventType: parsedEvent.eventType,
+        requestId: parsedEvent.tracing.requestId,
+        correlationId: parsedEvent.tracing.correlationId,
+        traceId: parsedEvent.tracing.traceId,
+        idempotencyKey: parsedEvent.idempotencyKey,
+    });
     const response = yield getSqsClient().send(new client_sqs_1.SendMessageCommand({
-        QueueUrl: getRequiredQueueUrl("MCP_WORKER_AGENT_JOBS_SQS_URL"),
+        QueueUrl: queueUrl,
         MessageBody: JSON.stringify(parsedEvent),
     }));
     if (!response.MessageId) {
         throw new Error("SQS did not return a message id");
     }
+    logWorkerSqs("send.success", {
+        queueUrl,
+        messageId: response.MessageId,
+        eventId: parsedEvent.eventId,
+        requestId: parsedEvent.tracing.requestId,
+        correlationId: parsedEvent.tracing.correlationId,
+    });
     return { messageId: response.MessageId };
 });
 exports.sendWorkerEvent = sendWorkerEvent;
 const receiveWorkerResultMessages = (params) => __awaiter(void 0, void 0, void 0, function* () {
+    const queueUrl = getRequiredQueueUrl("MCP_WORKER_AGENT_RESULTS_SQS_URL");
+    const maxNumberOfMessages = (params === null || params === void 0 ? void 0 : params.maxNumberOfMessages) || 5;
+    const waitTimeSeconds = (params === null || params === void 0 ? void 0 : params.waitTimeSeconds) || 20;
+    const visibilityTimeout = (params === null || params === void 0 ? void 0 : params.visibilityTimeout) || 60;
+    logWorkerSqs("receive.poll.start", {
+        queueUrl,
+        maxNumberOfMessages,
+        waitTimeSeconds,
+        visibilityTimeout,
+    });
     const response = yield getSqsClient().send(new client_sqs_1.ReceiveMessageCommand({
-        QueueUrl: getRequiredQueueUrl("MCP_WORKER_AGENT_RESULTS_SQS_URL"),
-        MaxNumberOfMessages: (params === null || params === void 0 ? void 0 : params.maxNumberOfMessages) || 5,
-        WaitTimeSeconds: (params === null || params === void 0 ? void 0 : params.waitTimeSeconds) || 20,
-        VisibilityTimeout: (params === null || params === void 0 ? void 0 : params.visibilityTimeout) || 60,
+        QueueUrl: queueUrl,
+        MaxNumberOfMessages: maxNumberOfMessages,
+        WaitTimeSeconds: waitTimeSeconds,
+        VisibilityTimeout: visibilityTimeout,
         MessageAttributeNames: ["All"],
     }));
-    return response.Messages || [];
+    const messages = response.Messages || [];
+    logWorkerSqs("receive.poll.done", {
+        queueUrl,
+        receivedCount: messages.length,
+        messageIds: messages.map((message) => message.MessageId).filter(Boolean),
+    });
+    return messages;
 });
 exports.receiveWorkerResultMessages = receiveWorkerResultMessages;
 const deleteWorkerResultMessage = (receiptHandle) => __awaiter(void 0, void 0, void 0, function* () {
     if (!receiptHandle) {
         throw new Error("receiptHandle is required");
     }
+    const queueUrl = getRequiredQueueUrl("MCP_WORKER_AGENT_RESULTS_SQS_URL");
+    logWorkerSqs("delete.start", {
+        queueUrl,
+        receiptHandlePreview: receiptHandle.slice(0, 12),
+    });
     yield getSqsClient().send(new client_sqs_1.DeleteMessageCommand({
-        QueueUrl: getRequiredQueueUrl("MCP_WORKER_AGENT_RESULTS_SQS_URL"),
+        QueueUrl: queueUrl,
         ReceiptHandle: receiptHandle,
     }));
+    logWorkerSqs("delete.success", {
+        queueUrl,
+        receiptHandlePreview: receiptHandle.slice(0, 12),
+    });
 });
 exports.deleteWorkerResultMessage = deleteWorkerResultMessage;
 const parseWorkerResultMessage = (body) => {
+    logWorkerSqs("receive.parse.start", {
+        bodyLength: (body === null || body === void 0 ? void 0 : body.length) || 0,
+    });
     const parsed = JSON.parse(body);
-    return workerAgentContracts_1.workerResultEventSchema.parse(parsed);
+    const validated = workerAgentContracts_1.workerResultEventSchema.parse(parsed);
+    logWorkerSqs("receive.parse.success", {
+        eventId: validated.eventId,
+        eventType: validated.eventType,
+        executionId: validated.executionId,
+        resultId: validated.resultId,
+        status: validated.status,
+        requestId: validated.output.requestId,
+        correlationId: validated.output.correlationId,
+    });
+    return validated;
 };
 exports.parseWorkerResultMessage = parseWorkerResultMessage;
 //# sourceMappingURL=workerAgentSqsService.js.map

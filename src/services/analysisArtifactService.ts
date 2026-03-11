@@ -12,26 +12,37 @@ type AnalysisArtifactInput = {
   analysisJobId: string;
   flow: AnalysisArtifactFlow;
   producer: AnalysisArtifactProducer;
+  executionId: string;
+  resultId: string;
+  artifactId: string;
   artifactType: AnalysisArtifactType;
   role?: AnalysisArtifactRole;
   promptKey?: string;
   promptVersion?: string;
-  schemaName?: string;
-  schemaVersion?: string;
-  s3Bucket: string;
-  s3Key: string;
-  s3Uri: string;
+  storage: {
+    provider: "s3";
+    status: AnalysisArtifactStatus;
+    s3Bucket?: string;
+    s3Key?: string;
+    s3Uri?: string;
+  };
   mimeType?: string;
   fileSizeBytes?: number;
-  filename?: string;
+  filename: string;
   title?: string;
   description?: string;
-  stepName?: string;
-  toolName?: string;
-  status?: AnalysisArtifactStatus;
-  isPrimary?: boolean;
+  stepName: string;
+  toolName: string;
+  isPrimary: boolean;
+  schemaName?: string;
+  schemaVersion: string;
   metadata?: Record<string, any>;
   preview?: Record<string, any>;
+  requestId: string;
+  correlationId: string;
+  resultStatus: "SUCCESS" | "PARTIAL_SUCCESS" | "FAILED";
+  summary: string;
+  producedAt: string;
 };
 
 export class AnalysisArtifactServiceError extends Error {
@@ -51,20 +62,25 @@ const assertObjectId = (value: string, code: string, message: string) => {
   }
 };
 
+const toObjectId = (value: string) => new mongoose.Types.ObjectId(value);
+
+const buildCompatibleIdQuery = (value: string) => ({
+  $in: [value, toObjectId(value)],
+});
+
 const normalizeArtifact = (artifact: AnalysisArtifactInput) => ({
-  videoId: artifact.videoId,
-  analysisJobId: artifact.analysisJobId,
+  videoId: toObjectId(artifact.videoId),
+  analysisJobId: toObjectId(artifact.analysisJobId),
   flow: artifact.flow,
   producer: artifact.producer,
+  executionId: artifact.executionId,
+  resultId: artifact.resultId,
+  artifactId: artifact.artifactId,
   artifactType: artifact.artifactType,
   role: artifact.role || "supporting_output",
   promptKey: artifact.promptKey,
   promptVersion: artifact.promptVersion,
-  schemaName: artifact.schemaName,
-  schemaVersion: artifact.schemaVersion,
-  s3Bucket: artifact.s3Bucket,
-  s3Key: artifact.s3Key,
-  s3Uri: artifact.s3Uri,
+  storage: artifact.storage,
   mimeType: artifact.mimeType,
   fileSizeBytes: artifact.fileSizeBytes,
   filename: artifact.filename,
@@ -72,10 +88,16 @@ const normalizeArtifact = (artifact: AnalysisArtifactInput) => ({
   description: artifact.description,
   stepName: artifact.stepName,
   toolName: artifact.toolName,
-  status: artifact.status || "uploaded",
-  isPrimary: artifact.isPrimary || false,
+  isPrimary: artifact.isPrimary,
+  schemaName: artifact.schemaName,
+  schemaVersion: artifact.schemaVersion,
   metadata: artifact.metadata || {},
   preview: artifact.preview || {},
+  requestId: artifact.requestId,
+  correlationId: artifact.correlationId,
+  resultStatus: artifact.resultStatus,
+  summary: artifact.summary,
+  producedAt: new Date(artifact.producedAt),
 });
 
 export const upsertAnalysisArtifacts = async (artifacts: AnalysisArtifactInput[]) => {
@@ -86,8 +108,8 @@ export const upsertAnalysisArtifacts = async (artifacts: AnalysisArtifactInput[]
   const operations = artifacts.map((artifact) => ({
     updateOne: {
       filter: {
-        analysisJobId: artifact.analysisJobId,
-        s3Key: artifact.s3Key,
+        executionId: artifact.executionId,
+        artifactId: artifact.artifactId,
       },
       update: {
         $set: normalizeArtifact(artifact),
@@ -98,10 +120,10 @@ export const upsertAnalysisArtifacts = async (artifacts: AnalysisArtifactInput[]
 
   await AnalysisArtifact.bulkWrite(operations);
 
-  const keys = artifacts.map((artifact) => artifact.s3Key);
+  const artifactIds = artifacts.map((artifact) => artifact.artifactId);
   const docs = await AnalysisArtifact.find({
-    analysisJobId: artifacts[0].analysisJobId,
-    s3Key: { $in: keys },
+    executionId: artifacts[0].executionId,
+    artifactId: { $in: artifactIds },
   }).sort({ createdAt: 1 });
 
   return docs.map((doc) => (doc.toObject ? doc.toObject() : doc));
@@ -118,8 +140,11 @@ export const listAnalysisArtifactsByVideoId = async (
   const skip = (page - 1) * limit;
 
   const [items, total] = await Promise.all([
-    AnalysisArtifact.find({ videoId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
-    AnalysisArtifact.countDocuments({ videoId }),
+    AnalysisArtifact.find({ videoId: buildCompatibleIdQuery(videoId) })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    AnalysisArtifact.countDocuments({ videoId: buildCompatibleIdQuery(videoId) }),
   ]);
 
   return {
@@ -146,8 +171,11 @@ export const listAnalysisArtifactsByJobId = async (
   const skip = (page - 1) * limit;
 
   const [items, total] = await Promise.all([
-    AnalysisArtifact.find({ analysisJobId }).sort({ createdAt: -1 }).skip(skip).limit(limit),
-    AnalysisArtifact.countDocuments({ analysisJobId }),
+    AnalysisArtifact.find({ analysisJobId: buildCompatibleIdQuery(analysisJobId) })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit),
+    AnalysisArtifact.countDocuments({ analysisJobId: buildCompatibleIdQuery(analysisJobId) }),
   ]);
 
   return {

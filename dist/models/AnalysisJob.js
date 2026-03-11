@@ -65,6 +65,10 @@ const AnalysisJobSchema = new mongoose_1.Schema({
         enum: ["SUCCESS", "PARTIAL_SUCCESS", "FAILED"],
         required: false,
     },
+    workerProducedAt: { type: Date, required: false },
+    workerSummary: { type: String, required: false },
+    primaryArtifact: { type: mongoose_1.Schema.Types.Mixed, required: false },
+    artifacts: { type: mongoose_1.Schema.Types.Mixed, required: false },
     startedAt: { type: Date, required: false },
     completedAt: { type: Date, required: false },
 }, { timestamps: true });

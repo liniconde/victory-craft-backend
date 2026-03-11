@@ -30,7 +30,7 @@ Current implementation for video analysis:
 - `eventId`: `randomUUID()`
 - `requestId`: `randomUUID()`
 - `correlationId`: `AnalysisJob._id`
-- `idempotencyKey`: `victorycraft:video.analysis.requested:{videoId}:v1`
+- `idempotencyKey`: `victorycraft:{analysisJobId}:v1`
 
 Persist these values in the job row before or immediately after SQS send:
 

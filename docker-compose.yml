@@ -26,6 +26,20 @@ services:
       - backend
     restart: unless-stopped
 
+  mcp-results-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: node:22-bookworm-slim
+    container_name: victory-craft-mcp-results-worker
+    command: ["node", "dist/workers/workerAgentResultsConsumer.js"]
+    env_file:
+      - .env
+    depends_on:
+      - backend
+    restart: unless-stopped
+
   swagger-ui:
     image: swaggerapi/swagger-ui:latest
     container_name: victory-craft-swagger

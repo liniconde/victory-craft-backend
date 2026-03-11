@@ -2720,6 +2720,17 @@ components:
         workerResultStatus:
           type: string
           enum: [SUCCESS, PARTIAL_SUCCESS, FAILED]
+        workerProducedAt:
+          type: string
+          format: date-time
+        workerSummary:
+          type: string
+        primaryArtifact:
+          $ref: "#/components/schemas/AnalysisArtifactFrontendProjection"
+        artifacts:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalysisArtifactFrontendProjection"
         startedAt:
           type: string
           format: date-time
@@ -3020,6 +3031,53 @@ components:
         pagination:
           $ref: "#/components/schemas/PaginationMeta"
 
+    AnalysisArtifactFrontendProjection:
+      type: object
+      properties:
+        artifactId:
+          type: string
+        artifactType:
+          type: string
+          enum: [json_result, json_stats, rendered_video, image, text_report, zip, other]
+        role:
+          type: string
+          enum: [primary_output, supporting_output, debug, preview, final_report]
+        title:
+          type: string
+        description:
+          type: string
+        filename:
+          type: string
+        stepName:
+          type: string
+        toolName:
+          type: string
+        isPrimary:
+          type: boolean
+        mimeType:
+          type: string
+        storage:
+          $ref: "#/components/schemas/ArtifactStorage"
+        preview:
+          type: object
+          additionalProperties: true
+
+    ArtifactStorage:
+      type: object
+      properties:
+        provider:
+          type: string
+          enum: [s3]
+        status:
+          type: string
+          enum: [generated, uploaded, failed]
+        s3Bucket:
+          type: string
+        s3Key:
+          type: string
+        s3Uri:
+          type: string
+
     AnalysisArtifact:
       type: object
       properties:
@@ -3035,6 +3093,12 @@ components:
         producer:
           type: string
           enum: [gemini, mcp_worker_agent, unknown]
+        executionId:
+          type: string
+        resultId:
+          type: string
+        artifactId:
+          type: string
         artifactType:
           type: string
           enum: [json_result, json_stats, rendered_video, image, text_report, zip, other]
@@ -3045,16 +3109,8 @@ components:
           type: string
         promptVersion:
           type: string
-        schemaName:
-          type: string
-        schemaVersion:
-          type: string
-        s3Bucket:
-          type: string
-        s3Key:
-          type: string
-        s3Uri:
-          type: string
+        storage:
+          $ref: "#/components/schemas/ArtifactStorage"
         mimeType:
           type: string
         fileSizeBytes:
@@ -3069,17 +3125,30 @@ components:
           type: string
         toolName:
           type: string
-        status:
-          type: string
-          enum: [generated, uploaded, failed]
         isPrimary:
           type: boolean
+        schemaName:
+          type: string
+        schemaVersion:
+          type: string
         metadata:
           type: object
           additionalProperties: true
         preview:
           type: object
           additionalProperties: true
+        requestId:
+          type: string
+        correlationId:
+          type: string
+        resultStatus:
+          type: string
+          enum: [SUCCESS, PARTIAL_SUCCESS, FAILED]
+        summary:
+          type: string
+        producedAt:
+          type: string
+          format: date-time
         createdAt:
           type: string
           format: date-time

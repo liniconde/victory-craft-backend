@@ -32,6 +32,49 @@ export const workerInboundEventSchema = z
 
 export const workerResultStatusSchema = z.enum(["SUCCESS", "PARTIAL_SUCCESS", "FAILED"]);
 
+export const artifactStorageSchema = z.object({
+  provider: z.literal("s3"),
+  status: z.enum(["generated", "uploaded", "failed"]),
+  s3Bucket: z.string().min(1).optional(),
+  s3Key: z.string().min(1).optional(),
+  s3Uri: z.string().min(1).optional(),
+});
+
+export const artifactManifestItemSchema = z.object({
+  artifactId: z.string().min(1),
+  artifactType: z.enum([
+    "json_result",
+    "json_stats",
+    "rendered_video",
+    "image",
+    "text_report",
+    "zip",
+    "other",
+  ]),
+  role: z.enum([
+    "primary_output",
+    "supporting_output",
+    "debug",
+    "preview",
+    "final_report",
+  ]),
+  title: z.string().min(1).optional(),
+  description: z.string().min(1).optional(),
+  filename: z.string().min(1),
+  stepName: z.string().min(1),
+  toolName: z.string().min(1),
+  promptKey: z.string().min(1).optional(),
+  promptVersion: z.string().min(1).optional(),
+  storage: artifactStorageSchema,
+  mimeType: z.string().min(1).optional(),
+  fileSizeBytes: z.number().int().nonnegative().optional(),
+  isPrimary: z.boolean(),
+  schemaName: z.string().min(1).optional(),
+  schemaVersion: z.string().min(1),
+  preview: z.record(z.unknown()).optional(),
+  metadata: z.record(z.unknown()).optional(),
+});
+
 export const workerResultOutputSchema = z
   .object({
     eventType: z.string().min(1).optional(),
@@ -42,10 +85,11 @@ export const workerResultOutputSchema = z
     toolSuccessCount: z.number().int().min(0).optional(),
     toolFailureCount: z.number().int().min(0).optional(),
     toolOutputs: z.array(z.unknown()).optional(),
+    artifacts: z.array(artifactManifestItemSchema),
     operationalNotes: z.array(z.unknown()).optional(),
-    requestId: z.string().min(1).optional(),
-    correlationId: z.string().min(1).optional(),
-    producedAt: isoUtcDateTimeSchema.optional(),
+    requestId: z.string().min(1),
+    correlationId: z.string().min(1),
+    producedAt: isoUtcDateTimeSchema,
   })
   .passthrough();
 
@@ -61,6 +105,8 @@ export const workerResultEventSchema = z
   .passthrough();
 
 export type WorkerInboundEvent = z.infer<typeof workerInboundEventSchema>;
+export type ArtifactStorage = z.infer<typeof artifactStorageSchema>;
+export type ArtifactManifestItem = z.infer<typeof artifactManifestItemSchema>;
 export type WorkerResultStatus = z.infer<typeof workerResultStatusSchema>;
 export type WorkerResultOutput = z.infer<typeof workerResultOutputSchema>;
 export type WorkerResultEvent = z.infer<typeof workerResultEventSchema>;
