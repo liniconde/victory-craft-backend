@@ -74,6 +74,7 @@ exports.workerResultOutputSchema = zod_1.z
     .object({
     eventType: zod_1.z.string().min(1).optional(),
     status: zod_1.z.string().min(1).optional(),
+    agentMessage: zod_1.z.string().min(1).optional(),
     planId: zod_1.z.string().min(1).optional(),
     strategy: zod_1.z.string().min(1).optional(),
     toolCallCount: zod_1.z.number().int().min(0).optional(),

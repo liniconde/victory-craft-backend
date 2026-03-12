@@ -100,7 +100,52 @@ const getAnalysisJobStatus = (videoId, jobId) => __awaiter(void 0, void 0, void 
     if (!job) {
         throw new AnalysisJobServiceError(404, "job_not_found", "Analysis job not found");
     }
-    return job.toObject();
+    const raw = job.toObject();
+    const output = raw.output && typeof raw.output === "object" ? raw.output : {};
+    const resolvedAgentMessage = (typeof output.agentMessage === "string" && output.agentMessage.trim()) ||
+        (typeof raw.workerAgentMessage === "string" && raw.workerAgentMessage.trim()) ||
+        (typeof raw.workerSummary === "string" && raw.workerSummary.trim()) ||
+        workerAgentService_1.DEFAULT_WORKER_AGENT_MESSAGE;
+    const artifacts = (Array.isArray(output.artifacts) && output.artifacts) ||
+        (Array.isArray(raw.artifacts) && raw.artifacts) ||
+        [];
+    const toolOutputs = Array.isArray(output.toolOutputs) ? output.toolOutputs : [];
+    const technicalErrors = toolOutputs
+        .map((item) => {
+        const row = item;
+        if (!row || typeof row !== "object") {
+            return null;
+        }
+        const hasExplicitFailure = row.ok === false || Boolean(row.error);
+        if (!hasExplicitFailure) {
+            return null;
+        }
+        return {
+            toolName: typeof row.toolName === "string" ? row.toolName : undefined,
+            code: row.error && typeof row.error === "object" && typeof row.error.code === "string"
+                ? row.error.code
+                : undefined,
+            message: row.error && typeof row.error === "object" && typeof row.error.message === "string"
+                ? row.error.message
+                : undefined,
+        };
+    })
+        .filter(Boolean);
+    return Object.assign(Object.assign({}, raw), { execution: {
+            id: raw.workerExecutionId || null,
+            requestId: raw.workerRequestId || output.requestId || null,
+            correlationId: raw.workerCorrelationId || output.correlationId || null,
+            result: {
+                id: raw.workerResultId || null,
+                status: raw.workerResultStatus || null,
+                summary: raw.workerSummary || raw.errorMessage || null,
+                agentMessage: resolvedAgentMessage,
+                artifacts,
+                technicalErrors: raw.workerResultStatus === "PARTIAL_SUCCESS" || raw.workerResultStatus === "FAILED"
+                    ? technicalErrors
+                    : [],
+            },
+        } });
 });
 exports.getAnalysisJobStatus = getAnalysisJobStatus;
 //# sourceMappingURL=analysisJobService.js.map

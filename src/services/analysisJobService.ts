@@ -3,7 +3,10 @@ import AnalysisJob from "../models/AnalysisJob";
 import Video from "../models/Video";
 import { createNotification } from "./notificationService";
 import { sendAnalysisJobToQueue } from "./queueService";
-import { createWorkerVideoAnalysisJob } from "./workerAgentService";
+import {
+  DEFAULT_WORKER_AGENT_MESSAGE,
+  createWorkerVideoAnalysisJob,
+} from "./workerAgentService";
 
 type AnalyzePromptInput = {
   analysisType?: "agent_prompt" | "custom";
@@ -145,5 +148,65 @@ export const getAnalysisJobStatus = async (videoId: string, jobId: string) => {
     throw new AnalysisJobServiceError(404, "job_not_found", "Analysis job not found");
   }
 
-  return job.toObject();
+  const raw = job.toObject();
+  const output =
+    raw.output && typeof raw.output === "object" ? (raw.output as Record<string, any>) : {};
+
+  const resolvedAgentMessage =
+    (typeof output.agentMessage === "string" && output.agentMessage.trim()) ||
+    (typeof raw.workerAgentMessage === "string" && raw.workerAgentMessage.trim()) ||
+    (typeof raw.workerSummary === "string" && raw.workerSummary.trim()) ||
+    DEFAULT_WORKER_AGENT_MESSAGE;
+
+  const artifacts =
+    (Array.isArray(output.artifacts) && output.artifacts) ||
+    (Array.isArray(raw.artifacts) && raw.artifacts) ||
+    [];
+
+  const toolOutputs = Array.isArray(output.toolOutputs) ? output.toolOutputs : [];
+  const technicalErrors = toolOutputs
+    .map((item) => {
+      const row = item as Record<string, any>;
+      if (!row || typeof row !== "object") {
+        return null;
+      }
+
+      const hasExplicitFailure = row.ok === false || Boolean(row.error);
+      if (!hasExplicitFailure) {
+        return null;
+      }
+
+      return {
+        toolName: typeof row.toolName === "string" ? row.toolName : undefined,
+        code:
+          row.error && typeof row.error === "object" && typeof row.error.code === "string"
+            ? row.error.code
+            : undefined,
+        message:
+          row.error && typeof row.error === "object" && typeof row.error.message === "string"
+            ? row.error.message
+            : undefined,
+      };
+    })
+    .filter(Boolean);
+
+  return {
+    ...raw,
+    execution: {
+      id: raw.workerExecutionId || null,
+      requestId: raw.workerRequestId || output.requestId || null,
+      correlationId: raw.workerCorrelationId || output.correlationId || null,
+      result: {
+        id: raw.workerResultId || null,
+        status: raw.workerResultStatus || null,
+        summary: raw.workerSummary || raw.errorMessage || null,
+        agentMessage: resolvedAgentMessage,
+        artifacts,
+        technicalErrors:
+          raw.workerResultStatus === "PARTIAL_SUCCESS" || raw.workerResultStatus === "FAILED"
+            ? technicalErrors
+            : [],
+      },
+    },
+  };
 };

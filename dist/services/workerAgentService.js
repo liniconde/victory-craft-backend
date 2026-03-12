@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.applyWorkerResultToAnalysisJob = exports.interpretWorkerResult = exports.createWorkerVideoAnalysisJob = exports.buildWorkerInboundEvent = exports.WorkerAgentServiceError = void 0;
+exports.applyWorkerResultToAnalysisJob = exports.interpretWorkerResult = exports.createWorkerVideoAnalysisJob = exports.resolveWorkerAgentMessage = exports.buildWorkerInboundEvent = exports.WorkerAgentServiceError = exports.DEFAULT_WORKER_AGENT_MESSAGE = void 0;
 const crypto_1 = require("crypto");
 const mongoose_1 = __importDefault(require("mongoose"));
 const AnalysisJob_1 = __importDefault(require("../models/AnalysisJob"));
@@ -22,6 +22,7 @@ const notificationService_1 = require("./notificationService");
 const analysisArtifactService_1 = require("./analysisArtifactService");
 const videoAnalysisRecordService_1 = require("./videoAnalysisRecordService");
 const workerAgentSqsService_1 = require("./workerAgentSqsService");
+exports.DEFAULT_WORKER_AGENT_MESSAGE = "La ejecución finalizó, pero no se recibió resumen narrativo del agente.";
 class WorkerAgentServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -95,6 +96,18 @@ const mapWorkerResultToJobStatus = (status) => {
     return "completed";
 };
 const buildAgentNotificationMetadata = (params) => (Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({ flow: "agent", provider: "mcp_worker_agent", stage: params.stage }, (params.eventType ? { eventType: params.eventType } : {})), (params.requestId ? { requestId: params.requestId } : {})), (params.correlationId ? { correlationId: params.correlationId } : {})), (params.traceId ? { traceId: params.traceId } : {})), (params.eventId ? { eventId: params.eventId } : {})), (params.idempotencyKey ? { idempotencyKey: params.idempotencyKey } : {})), (params.executionId ? { executionId: params.executionId } : {})), (params.resultId ? { resultId: params.resultId } : {})), (params.workerStatus ? { workerStatus: params.workerStatus } : {})), (params.summary ? { summary: params.summary } : {})));
+const resolveWorkerAgentMessage = (result) => {
+    var _a;
+    const candidate = (_a = result.output) === null || _a === void 0 ? void 0 : _a.agentMessage;
+    if (typeof candidate === "string" && candidate.trim()) {
+        return candidate.trim();
+    }
+    if (typeof result.summary === "string" && result.summary.trim()) {
+        return result.summary.trim();
+    }
+    return exports.DEFAULT_WORKER_AGENT_MESSAGE;
+};
+exports.resolveWorkerAgentMessage = resolveWorkerAgentMessage;
 const mapArtifactManifestToProjection = (artifact) => ({
     artifactId: artifact.artifactId,
     artifactType: artifact.artifactType,
@@ -150,6 +163,7 @@ const mapArtifactManifestToPersistence = (params) => {
     };
 };
 const buildWorkerFrontendProjection = (params) => ({
+    agentMessage: (0, exports.resolveWorkerAgentMessage)(params.result),
     summary: params.result.summary,
     status: params.result.status,
     primaryArtifact: params.artifacts.find((artifact) => artifact.isPrimary) ||
@@ -289,6 +303,7 @@ const interpretWorkerResult = (message) => {
     const result = workerAgentContracts_1.workerResultEventSchema.parse(message);
     return {
         result,
+        agentMessage: (0, exports.resolveWorkerAgentMessage)(result),
         requestId: result.output.requestId,
         correlationId: result.output.correlationId,
         executionId: result.executionId,
@@ -299,6 +314,8 @@ exports.interpretWorkerResult = interpretWorkerResult;
 const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const parsed = workerAgentContracts_1.workerResultEventSchema.parse(resultEvent);
+    const agentMessage = (0, exports.resolveWorkerAgentMessage)(parsed);
+    const outputWithAgentMessage = Object.assign(Object.assign({}, parsed.output), { agentMessage });
     const requestId = parsed.output.requestId;
     const correlationId = parsed.output.correlationId;
     const artifacts = parsed.output.artifacts;
@@ -348,7 +365,7 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
     }
     const updated = yield AnalysisJob_1.default.findByIdAndUpdate(job._id, {
         status: newStatus,
-        output: parsed.output,
+        output: outputWithAgentMessage,
         errorMessage: parsed.status === "FAILED" ? parsed.summary : undefined,
         completedAt: new Date(),
         workerExecutionId: parsed.executionId,
@@ -356,6 +373,7 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
         workerResultStatus: parsed.status,
         workerProducedAt: new Date(parsed.output.producedAt),
         workerSummary: parsed.summary,
+        workerAgentMessage: agentMessage,
         primaryArtifact: frontendProjection.primaryArtifact,
         artifacts: frontendProjection.artifacts,
     }, { new: true });
@@ -379,7 +397,7 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
             analysisJobId: String(job._id),
             analysisType: job.analysisType,
             input: job.input || {},
-            output: Object.assign(Object.assign({}, parsed.output), { frontendProjection }),
+            output: Object.assign(Object.assign({}, outputWithAgentMessage), { frontendProjection }),
             extraParams: {
                 source: "mcp_worker_agent",
                 summary: parsed.summary,
@@ -405,7 +423,7 @@ const applyWorkerResultToAnalysisJob = (resultEvent) => __awaiter(void 0, void 0
     try {
         yield (0, notificationService_1.createNotification)({
             type: parsed.status === "FAILED" ? "analysis_failed" : "analysis_completed",
-            message: parsed.summary,
+            message: agentMessage,
             videoId: String(job.videoId),
             analysisJobId: String(job._id),
             metadata: Object.assign({ status: parsed.status }, buildAgentNotificationMetadata({

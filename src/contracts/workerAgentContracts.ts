@@ -79,6 +79,7 @@ export const workerResultOutputSchema = z
   .object({
     eventType: z.string().min(1).optional(),
     status: z.string().min(1).optional(),
+    agentMessage: z.string().min(1).optional(),
     planId: z.string().min(1).optional(),
     strategy: z.string().min(1).optional(),
     toolCallCount: z.number().int().min(0).optional(),

@@ -44,6 +44,9 @@ type CreateWorkerVideoAnalysisJobInput = {
   analysis?: WorkerToolConfig;
 };
 
+export const DEFAULT_WORKER_AGENT_MESSAGE =
+  "La ejecución finalizó, pero no se recibió resumen narrativo del agente.";
+
 export class WorkerAgentServiceError extends Error {
   status: number;
   code: string;
@@ -202,6 +205,19 @@ const buildAgentNotificationMetadata = (params: {
   ...(params.summary ? { summary: params.summary } : {}),
 });
 
+export const resolveWorkerAgentMessage = (result: WorkerResultEvent): string => {
+  const candidate = result.output?.agentMessage;
+  if (typeof candidate === "string" && candidate.trim()) {
+    return candidate.trim();
+  }
+
+  if (typeof result.summary === "string" && result.summary.trim()) {
+    return result.summary.trim();
+  }
+
+  return DEFAULT_WORKER_AGENT_MESSAGE;
+};
+
 const mapArtifactManifestToProjection = (artifact: ArtifactManifestItem) => ({
   artifactId: artifact.artifactId,
   artifactType: artifact.artifactType,
@@ -274,6 +290,7 @@ const buildWorkerFrontendProjection = (params: {
   result: WorkerResultEvent;
   artifacts: ArtifactManifestItem[];
 }) => ({
+  agentMessage: resolveWorkerAgentMessage(params.result),
   summary: params.result.summary,
   status: params.result.status,
   primaryArtifact:
@@ -462,6 +479,7 @@ export const interpretWorkerResult = (message: unknown) => {
   const result = workerResultEventSchema.parse(message);
   return {
     result,
+    agentMessage: resolveWorkerAgentMessage(result),
     requestId: result.output.requestId,
     correlationId: result.output.correlationId,
     executionId: result.executionId,
@@ -471,6 +489,11 @@ export const interpretWorkerResult = (message: unknown) => {
 
 export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEvent) => {
   const parsed = workerResultEventSchema.parse(resultEvent);
+  const agentMessage = resolveWorkerAgentMessage(parsed);
+  const outputWithAgentMessage: WorkerResultOutput = {
+    ...parsed.output,
+    agentMessage,
+  };
   const requestId = parsed.output.requestId;
   const correlationId = parsed.output.correlationId;
   const artifacts = parsed.output.artifacts;
@@ -531,7 +554,7 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
     job._id,
     {
       status: newStatus,
-      output: parsed.output,
+      output: outputWithAgentMessage,
       errorMessage: parsed.status === "FAILED" ? parsed.summary : undefined,
       completedAt: new Date(),
       workerExecutionId: parsed.executionId,
@@ -539,6 +562,7 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
       workerResultStatus: parsed.status,
       workerProducedAt: new Date(parsed.output.producedAt),
       workerSummary: parsed.summary,
+      workerAgentMessage: agentMessage,
       primaryArtifact: frontendProjection.primaryArtifact,
       artifacts: frontendProjection.artifacts,
     },
@@ -568,7 +592,7 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
       analysisType: job.analysisType,
       input: job.input || {},
       output: {
-        ...parsed.output,
+        ...outputWithAgentMessage,
         frontendProjection,
       } as WorkerResultOutput,
       extraParams: {
@@ -598,7 +622,7 @@ export const applyWorkerResultToAnalysisJob = async (resultEvent: WorkerResultEv
   try {
     await createNotification({
       type: parsed.status === "FAILED" ? "analysis_failed" : "analysis_completed",
-      message: parsed.summary,
+      message: agentMessage,
       videoId: String(job.videoId),
       analysisJobId: String(job._id),
       metadata: {

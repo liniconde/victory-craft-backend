@@ -27,6 +27,7 @@ interface IAnalysisJob extends Document {
   workerResultStatus?: "SUCCESS" | "PARTIAL_SUCCESS" | "FAILED";
   workerProducedAt?: Date;
   workerSummary?: string;
+  workerAgentMessage?: string;
   primaryArtifact?: Record<string, any>;
   artifacts?: Record<string, any>;
   startedAt?: Date;
@@ -69,6 +70,7 @@ const AnalysisJobSchema = new Schema<IAnalysisJob>(
     },
     workerProducedAt: { type: Date, required: false },
     workerSummary: { type: String, required: false },
+    workerAgentMessage: { type: String, required: false },
     primaryArtifact: { type: Schema.Types.Mixed, required: false },
     artifacts: { type: Schema.Types.Mixed, required: false },
     startedAt: { type: Date, required: false },

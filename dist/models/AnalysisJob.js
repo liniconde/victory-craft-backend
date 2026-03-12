@@ -67,6 +67,7 @@ const AnalysisJobSchema = new mongoose_1.Schema({
     },
     workerProducedAt: { type: Date, required: false },
     workerSummary: { type: String, required: false },
+    workerAgentMessage: { type: String, required: false },
     primaryArtifact: { type: mongoose_1.Schema.Types.Mixed, required: false },
     artifacts: { type: mongoose_1.Schema.Types.Mixed, required: false },
     startedAt: { type: Date, required: false },
