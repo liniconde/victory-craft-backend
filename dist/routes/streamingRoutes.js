@@ -7,6 +7,7 @@ const express_1 = __importDefault(require("express"));
 const authMiddleware_1 = require("../middlewares/authMiddleware");
 const streamingController_1 = require("../controllers/streamingController");
 const router = express_1.default.Router();
+router.get("/match-sessions", authMiddleware_1.requireAuth, streamingController_1.handleListMatchSessions);
 router.post("/match-sessions", authMiddleware_1.requireAuth, streamingController_1.handleCreateMatchSession);
 router.post("/match-sessions/:id/rooms", authMiddleware_1.requireAuth, streamingController_1.handleCreateRoomForSession);
 router.post("/match-sessions/:id/segments", authMiddleware_1.requireAuth, streamingController_1.handleCreateSegment);

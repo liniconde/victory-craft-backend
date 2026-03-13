@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeRoomStream = exports.createSegment = exports.getMatchSessionTimeline = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.createMatchSession = exports.StreamingServiceError = void 0;
+exports.closeRoomStream = exports.createSegment = exports.getMatchSessionTimeline = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.listUserMatchSessions = exports.createMatchSession = exports.StreamingServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const MatchSession_1 = __importDefault(require("../models/MatchSession"));
 const StreamRoom_1 = __importDefault(require("../models/StreamRoom"));
@@ -101,6 +101,66 @@ const createMatchSession = (ownerId, title) => __awaiter(void 0, void 0, void 0,
     return created.toObject();
 });
 exports.createMatchSession = createMatchSession;
+const listUserMatchSessions = (userId) => __awaiter(void 0, void 0, void 0, function* () {
+    assertObjectId(userId, "userId");
+    const [ownedSessions, participantRoomIds] = yield Promise.all([
+        MatchSession_1.default.find({ ownerId: userId }, { _id: 1 }).lean(),
+        RoomParticipant_1.default.distinct("roomId", { userId }),
+    ]);
+    const participantSessionIds = participantRoomIds.length
+        ? yield StreamRoom_1.default.distinct("matchSessionId", { _id: { $in: participantRoomIds } })
+        : [];
+    const ownedSessionIdSet = new Set(ownedSessions.map((session) => String(session._id)));
+    const sessionIds = Array.from(new Set([...ownedSessionIdSet, ...participantSessionIds.map((id) => String(id))]));
+    if (!sessionIds.length) {
+        return { items: [], total: 0 };
+    }
+    const [sessions, roomStats, segmentStats] = yield Promise.all([
+        MatchSession_1.default.find({ _id: { $in: sessionIds } }).sort({ createdAt: -1, _id: -1 }).lean(),
+        StreamRoom_1.default.aggregate([
+            { $match: { matchSessionId: { $in: sessionIds.map((id) => new mongoose_1.default.Types.ObjectId(id)) } } },
+            { $group: { _id: "$matchSessionId", roomCount: { $sum: 1 } } },
+        ]),
+        VideoSegment_1.default.aggregate([
+            { $match: { matchSessionId: { $in: sessionIds.map((id) => new mongoose_1.default.Types.ObjectId(id)) } } },
+            {
+                $group: {
+                    _id: "$matchSessionId",
+                    clipCount: { $sum: 1 },
+                    lastSequence: { $max: "$sequence" },
+                    computedTotalDurationSec: { $sum: "$durationSec" },
+                },
+            },
+        ]),
+    ]);
+    const roomCountBySessionId = new Map(roomStats.map((row) => [String(row._id), row.roomCount]));
+    const segmentStatsBySessionId = new Map(segmentStats.map((row) => [String(row._id), row]));
+    const items = sessions.map((session) => {
+        const sessionId = String(session._id);
+        const segmentRow = segmentStatsBySessionId.get(sessionId);
+        const isOwner = String(session.ownerId) === userId;
+        return {
+            _id: session._id,
+            ownerId: session.ownerId,
+            title: session.title,
+            status: session.status,
+            endedAt: session.endedAt,
+            totalDurationSec: session.totalDurationSec,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            accessRole: isOwner ? "owner" : "participant",
+            roomCount: roomCountBySessionId.get(sessionId) || 0,
+            clipCount: (segmentRow === null || segmentRow === void 0 ? void 0 : segmentRow.clipCount) || 0,
+            lastSequence: typeof (segmentRow === null || segmentRow === void 0 ? void 0 : segmentRow.lastSequence) === "number" ? segmentRow.lastSequence : -1,
+            computedTotalDurationSec: (segmentRow === null || segmentRow === void 0 ? void 0 : segmentRow.computedTotalDurationSec) || 0,
+        };
+    });
+    return {
+        items,
+        total: items.length,
+    };
+});
+exports.listUserMatchSessions = listUserMatchSessions;
 const createRoomForSession = (matchSessionId, ownerId) => __awaiter(void 0, void 0, void 0, function* () {
     assertObjectId(matchSessionId, "matchSessionId");
     assertObjectId(ownerId, "ownerId");

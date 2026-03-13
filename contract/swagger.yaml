@@ -1114,6 +1114,27 @@ paths:
           $ref: "#/components/responses/InternalError"
 
   /match-sessions:
+    get:
+      tags: [Streaming]
+      summary: Listar sesiones de partido del usuario autenticado
+      description: >
+        Devuelve las sesiones donde el usuario es owner o ha participado en
+        alguna sala. Incluye resumen de salas, clips y duracion acumulada.
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Listado de sesiones del usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchSessionListResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags: [Streaming]
       summary: Crear sesion de partido
@@ -2853,6 +2874,33 @@ components:
         updatedAt:
           type: string
           format: date-time
+
+    MatchSessionListItem:
+      allOf:
+        - $ref: "#/components/schemas/MatchSession"
+        - type: object
+          properties:
+            accessRole:
+              type: string
+              enum: [owner, participant]
+            roomCount:
+              type: integer
+            clipCount:
+              type: integer
+            lastSequence:
+              type: integer
+            computedTotalDurationSec:
+              type: number
+
+    MatchSessionListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSessionListItem"
+        total:
+          type: integer
 
     StreamRoom:
       type: object

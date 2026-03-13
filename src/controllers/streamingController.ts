@@ -8,6 +8,7 @@ import {
   getRoomDetails,
   joinRoom,
   leaveRoom,
+  listUserMatchSessions,
   listRoomSegments,
   StreamingServiceError,
 } from "../services/streamingService";
@@ -42,6 +43,21 @@ export const handleCreateMatchSession = async (req: ReqWithUser, res: Response) 
     const title = String(req.body?.title || "");
     const result = await createMatchSession(ownerId, title);
     res.status(201).json(result);
+  } catch (error: any) {
+    handleError(res, error);
+  }
+};
+
+export const handleListMatchSessions = async (req: ReqWithUser, res: Response) => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized", code: "unauthorized" });
+      return;
+    }
+
+    const result = await listUserMatchSessions(userId);
+    res.status(200).json(result);
   } catch (error: any) {
     handleError(res, error);
   }

@@ -2,6 +2,7 @@ import express from "express";
 import { requireAuth } from "../middlewares/authMiddleware";
 import {
   handleCreateMatchSession,
+  handleListMatchSessions,
   handleCreateRoomForSession,
   handleCreateSegment,
   handleGetMatchSessionTimeline,
@@ -15,6 +16,7 @@ import {
 
 const router = express.Router();
 
+router.get("/match-sessions", requireAuth, handleListMatchSessions);
 router.post("/match-sessions", requireAuth, handleCreateMatchSession);
 router.post("/match-sessions/:id/rooms", requireAuth, handleCreateRoomForSession);
 router.post("/match-sessions/:id/segments", requireAuth, handleCreateSegment);

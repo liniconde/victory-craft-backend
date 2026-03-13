@@ -103,6 +103,77 @@ export const createMatchSession = async (ownerId: string, title: string) => {
   return created.toObject();
 };
 
+export const listUserMatchSessions = async (userId: string) => {
+  assertObjectId(userId, "userId");
+
+  const [ownedSessions, participantRoomIds] = await Promise.all([
+    MatchSession.find({ ownerId: userId }, { _id: 1 }).lean(),
+    RoomParticipant.distinct("roomId", { userId }),
+  ]);
+
+  const participantSessionIds = participantRoomIds.length
+    ? await StreamRoom.distinct("matchSessionId", { _id: { $in: participantRoomIds } })
+    : [];
+
+  const ownedSessionIdSet = new Set(ownedSessions.map((session) => String(session._id)));
+  const sessionIds = Array.from(
+    new Set([...ownedSessionIdSet, ...participantSessionIds.map((id) => String(id))]),
+  );
+
+  if (!sessionIds.length) {
+    return { items: [], total: 0 };
+  }
+
+  const [sessions, roomStats, segmentStats] = await Promise.all([
+    MatchSession.find({ _id: { $in: sessionIds } }).sort({ createdAt: -1, _id: -1 }).lean(),
+    StreamRoom.aggregate([
+      { $match: { matchSessionId: { $in: sessionIds.map((id) => new mongoose.Types.ObjectId(id)) } } },
+      { $group: { _id: "$matchSessionId", roomCount: { $sum: 1 } } },
+    ]),
+    VideoSegment.aggregate([
+      { $match: { matchSessionId: { $in: sessionIds.map((id) => new mongoose.Types.ObjectId(id)) } } },
+      {
+        $group: {
+          _id: "$matchSessionId",
+          clipCount: { $sum: 1 },
+          lastSequence: { $max: "$sequence" },
+          computedTotalDurationSec: { $sum: "$durationSec" },
+        },
+      },
+    ]),
+  ]);
+
+  const roomCountBySessionId = new Map(roomStats.map((row) => [String(row._id), row.roomCount]));
+  const segmentStatsBySessionId = new Map(segmentStats.map((row) => [String(row._id), row]));
+
+  const items = sessions.map((session) => {
+    const sessionId = String(session._id);
+    const segmentRow = segmentStatsBySessionId.get(sessionId);
+    const isOwner = String(session.ownerId) === userId;
+
+    return {
+      _id: session._id,
+      ownerId: session.ownerId,
+      title: session.title,
+      status: session.status,
+      endedAt: session.endedAt,
+      totalDurationSec: session.totalDurationSec,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      accessRole: isOwner ? "owner" : "participant",
+      roomCount: roomCountBySessionId.get(sessionId) || 0,
+      clipCount: segmentRow?.clipCount || 0,
+      lastSequence: typeof segmentRow?.lastSequence === "number" ? segmentRow.lastSequence : -1,
+      computedTotalDurationSec: segmentRow?.computedTotalDurationSec || 0,
+    };
+  });
+
+  return {
+    items,
+    total: items.length,
+  };
+};
+
 export const createRoomForSession = async (matchSessionId: string, ownerId: string) => {
   assertObjectId(matchSessionId, "matchSessionId");
   assertObjectId(ownerId, "ownerId");
