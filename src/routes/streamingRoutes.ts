@@ -4,6 +4,7 @@ import {
   handleCreateMatchSession,
   handleCreateRoomForSession,
   handleCreateSegment,
+  handleGetMatchSessionTimeline,
   handleGetRoom,
   handleGetRoomSegments,
   handleJoinRoom,
@@ -17,6 +18,7 @@ const router = express.Router();
 router.post("/match-sessions", requireAuth, handleCreateMatchSession);
 router.post("/match-sessions/:id/rooms", requireAuth, handleCreateRoomForSession);
 router.post("/match-sessions/:id/segments", requireAuth, handleCreateSegment);
+router.get("/match-sessions/:id/timeline", requireAuth, handleGetMatchSessionTimeline);
 
 router.get("/rooms/:id", requireAuth, handleGetRoom);
 router.get("/rooms/:id/segments", requireAuth, handleGetRoomSegments);

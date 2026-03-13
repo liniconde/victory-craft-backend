@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleListVideoAnalysisRecords = void 0;
+exports.handleDeleteVideoAnalysisRecord = exports.handleListVideoAnalysisRecords = void 0;
 const videoAnalysisRecordService_1 = require("../services/videoAnalysisRecordService");
 const handleListVideoAnalysisRecords = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -28,4 +28,22 @@ const handleListVideoAnalysisRecords = (req, res) => __awaiter(void 0, void 0, v
     }
 });
 exports.handleListVideoAnalysisRecords = handleListVideoAnalysisRecords;
+const handleDeleteVideoAnalysisRecord = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id: videoId, recordId } = req.params;
+        const deleted = yield (0, videoAnalysisRecordService_1.deleteVideoAnalysisRecordById)(videoId, recordId);
+        res.status(200).json({
+            message: "Analysis record deleted",
+            record: deleted,
+        });
+    }
+    catch (error) {
+        if (error instanceof videoAnalysisRecordService_1.VideoAnalysisRecordServiceError) {
+            res.status(error.status).json({ message: error.message, code: error.code });
+            return;
+        }
+        res.status(500).json({ message: error.message || "Internal server error" });
+    }
+});
+exports.handleDeleteVideoAnalysisRecord = handleDeleteVideoAnalysisRecord;
 //# sourceMappingURL=videoAnalysisRecordController.js.map

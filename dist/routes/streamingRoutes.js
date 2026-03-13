@@ -10,6 +10,7 @@ const router = express_1.default.Router();
 router.post("/match-sessions", authMiddleware_1.requireAuth, streamingController_1.handleCreateMatchSession);
 router.post("/match-sessions/:id/rooms", authMiddleware_1.requireAuth, streamingController_1.handleCreateRoomForSession);
 router.post("/match-sessions/:id/segments", authMiddleware_1.requireAuth, streamingController_1.handleCreateSegment);
+router.get("/match-sessions/:id/timeline", authMiddleware_1.requireAuth, streamingController_1.handleGetMatchSessionTimeline);
 router.get("/rooms/:id", authMiddleware_1.requireAuth, streamingController_1.handleGetRoom);
 router.get("/rooms/:id/segments", authMiddleware_1.requireAuth, streamingController_1.handleGetRoomSegments);
 router.post("/rooms/:id/join", authMiddleware_1.requireAuth, streamingController_1.handleJoinRoom);

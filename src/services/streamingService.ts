@@ -39,6 +39,33 @@ const ensureRoomAccess = async (roomId: string, userId: string) => {
   return room;
 };
 
+const ensureMatchSessionAccess = async (matchSessionId: string, userId: string) => {
+  const session = await MatchSession.findById(matchSessionId);
+  if (!session) {
+    throw new StreamingServiceError(404, "session_not_found", "Match session not found");
+  }
+
+  if (String(session.ownerId) === userId) return session;
+
+  const rooms = await StreamRoom.find({ matchSessionId }, { _id: 1 }).lean();
+  const roomIds = rooms.map((room) => room._id);
+  if (!roomIds.length) {
+    throw new StreamingServiceError(403, "forbidden", "User is not part of match session");
+  }
+
+  const participant = await RoomParticipant.findOne({
+    roomId: { $in: roomIds },
+    userId,
+    status: "active",
+  });
+
+  if (!participant) {
+    throw new StreamingServiceError(403, "forbidden", "User is not part of match session");
+  }
+
+  return session;
+};
+
 const getSessionMetrics = async (matchSessionId: string) => {
   const rows = await VideoSegment.aggregate([
     { $match: { matchSessionId: new mongoose.Types.ObjectId(matchSessionId) } },
@@ -190,6 +217,68 @@ export const listRoomSegments = async (
     ...segment.toObject(),
     signedDownloadUrl: getObjectS3SignedUrl(segment.s3Key),
   }));
+};
+
+export const getMatchSessionTimeline = async (matchSessionId: string, userId: string) => {
+  assertObjectId(matchSessionId, "matchSessionId");
+  assertObjectId(userId, "userId");
+
+  const session = await ensureMatchSessionAccess(matchSessionId, userId);
+  const segments = await VideoSegment.find({ matchSessionId }).sort({ sequence: 1 });
+
+  let accumulatedSec = 0;
+  let previousSequence: number | null = null;
+
+  const items = segments.map((segment) => {
+    const timelineStartSec = accumulatedSec;
+    const timelineEndSec = timelineStartSec + segment.durationSec;
+    accumulatedSec = timelineEndSec;
+
+    const sequenceGapFromPrevious =
+      previousSequence === null ? 0 : Math.max(segment.sequence - previousSequence - 1, 0);
+    previousSequence = segment.sequence;
+
+    return {
+      ...segment.toObject(),
+      signedDownloadUrl: getObjectS3SignedUrl(segment.s3Key),
+      timelineStartSec,
+      timelineEndSec,
+      sequenceGapFromPrevious,
+      isContiguousWithPrevious: sequenceGapFromPrevious === 0,
+    };
+  });
+
+  const lastSequence = segments.length ? segments[segments.length - 1].sequence : -1;
+  const expectedSegmentCount = lastSequence + 1;
+  const missingSegmentsCount =
+    expectedSegmentCount > 0 ? Math.max(expectedSegmentCount - segments.length, 0) : 0;
+  const hasSequenceGaps = missingSegmentsCount > 0;
+  const roomCount = await StreamRoom.countDocuments({ matchSessionId });
+
+  return {
+    matchSession: {
+      _id: session._id,
+      ownerId: session.ownerId,
+      title: session.title,
+      status: session.status,
+      endedAt: session.endedAt,
+      createdAt: session.createdAt,
+      updatedAt: session.updatedAt,
+      persistedTotalDurationSec: session.totalDurationSec,
+      computedTotalDurationSec: accumulatedSec,
+      roomCount,
+    },
+    timeline: {
+      clipCount: segments.length,
+      totalDurationSec: accumulatedSec,
+      firstSequence: segments.length ? segments[0].sequence : -1,
+      lastSequence,
+      expectedSegmentCount,
+      missingSegmentsCount,
+      hasSequenceGaps,
+    },
+    items,
+  };
 };
 
 export const createSegment = async (

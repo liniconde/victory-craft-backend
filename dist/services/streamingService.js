@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeRoomStream = exports.createSegment = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.createMatchSession = exports.StreamingServiceError = void 0;
+exports.closeRoomStream = exports.createSegment = exports.getMatchSessionTimeline = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.createMatchSession = exports.StreamingServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const MatchSession_1 = __importDefault(require("../models/MatchSession"));
 const StreamRoom_1 = __importDefault(require("../models/StreamRoom"));
@@ -43,6 +43,28 @@ const ensureRoomAccess = (roomId, userId) => __awaiter(void 0, void 0, void 0, f
     if (!participant)
         throw new StreamingServiceError(403, "forbidden", "User is not part of room");
     return room;
+});
+const ensureMatchSessionAccess = (matchSessionId, userId) => __awaiter(void 0, void 0, void 0, function* () {
+    const session = yield MatchSession_1.default.findById(matchSessionId);
+    if (!session) {
+        throw new StreamingServiceError(404, "session_not_found", "Match session not found");
+    }
+    if (String(session.ownerId) === userId)
+        return session;
+    const rooms = yield StreamRoom_1.default.find({ matchSessionId }, { _id: 1 }).lean();
+    const roomIds = rooms.map((room) => room._id);
+    if (!roomIds.length) {
+        throw new StreamingServiceError(403, "forbidden", "User is not part of match session");
+    }
+    const participant = yield RoomParticipant_1.default.findOne({
+        roomId: { $in: roomIds },
+        userId,
+        status: "active",
+    });
+    if (!participant) {
+        throw new StreamingServiceError(403, "forbidden", "User is not part of match session");
+    }
+    return session;
 });
 const getSessionMetrics = (matchSessionId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b, _c;
@@ -163,6 +185,54 @@ const listRoomSegments = (roomId, userId, afterSequence) => __awaiter(void 0, vo
     return segments.map((segment) => (Object.assign(Object.assign({}, segment.toObject()), { signedDownloadUrl: (0, s3FilesService_1.getObjectS3SignedUrl)(segment.s3Key) })));
 });
 exports.listRoomSegments = listRoomSegments;
+const getMatchSessionTimeline = (matchSessionId, userId) => __awaiter(void 0, void 0, void 0, function* () {
+    assertObjectId(matchSessionId, "matchSessionId");
+    assertObjectId(userId, "userId");
+    const session = yield ensureMatchSessionAccess(matchSessionId, userId);
+    const segments = yield VideoSegment_1.default.find({ matchSessionId }).sort({ sequence: 1 });
+    let accumulatedSec = 0;
+    let previousSequence = null;
+    const items = segments.map((segment) => {
+        const timelineStartSec = accumulatedSec;
+        const timelineEndSec = timelineStartSec + segment.durationSec;
+        accumulatedSec = timelineEndSec;
+        const sequenceGapFromPrevious = previousSequence === null ? 0 : Math.max(segment.sequence - previousSequence - 1, 0);
+        previousSequence = segment.sequence;
+        return Object.assign(Object.assign({}, segment.toObject()), { signedDownloadUrl: (0, s3FilesService_1.getObjectS3SignedUrl)(segment.s3Key), timelineStartSec,
+            timelineEndSec,
+            sequenceGapFromPrevious, isContiguousWithPrevious: sequenceGapFromPrevious === 0 });
+    });
+    const lastSequence = segments.length ? segments[segments.length - 1].sequence : -1;
+    const expectedSegmentCount = lastSequence + 1;
+    const missingSegmentsCount = expectedSegmentCount > 0 ? Math.max(expectedSegmentCount - segments.length, 0) : 0;
+    const hasSequenceGaps = missingSegmentsCount > 0;
+    const roomCount = yield StreamRoom_1.default.countDocuments({ matchSessionId });
+    return {
+        matchSession: {
+            _id: session._id,
+            ownerId: session.ownerId,
+            title: session.title,
+            status: session.status,
+            endedAt: session.endedAt,
+            createdAt: session.createdAt,
+            updatedAt: session.updatedAt,
+            persistedTotalDurationSec: session.totalDurationSec,
+            computedTotalDurationSec: accumulatedSec,
+            roomCount,
+        },
+        timeline: {
+            clipCount: segments.length,
+            totalDurationSec: accumulatedSec,
+            firstSequence: segments.length ? segments[0].sequence : -1,
+            lastSequence,
+            expectedSegmentCount,
+            missingSegmentsCount,
+            hasSequenceGaps,
+        },
+        items,
+    };
+});
+exports.getMatchSessionTimeline = getMatchSessionTimeline;
 const createSegment = (matchSessionId, ownerId, payload) => __awaiter(void 0, void 0, void 0, function* () {
     assertObjectId(matchSessionId, "matchSessionId");
     assertObjectId(ownerId, "ownerId");

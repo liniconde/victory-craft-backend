@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listVideoAnalysisRecordsByVideoId = exports.createVideoAnalysisRecord = exports.VideoAnalysisRecordServiceError = void 0;
+exports.deleteVideoAnalysisRecordById = exports.listVideoAnalysisRecordsByVideoId = exports.createVideoAnalysisRecord = exports.VideoAnalysisRecordServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const VideoAnalysisRecord_1 = __importDefault(require("../models/VideoAnalysisRecord"));
 class VideoAnalysisRecordServiceError extends Error {
@@ -59,4 +59,18 @@ const listVideoAnalysisRecordsByVideoId = (videoId, options) => __awaiter(void 0
     };
 });
 exports.listVideoAnalysisRecordsByVideoId = listVideoAnalysisRecordsByVideoId;
+const deleteVideoAnalysisRecordById = (videoId, recordId) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!videoId || !mongoose_1.default.Types.ObjectId.isValid(videoId)) {
+        throw new VideoAnalysisRecordServiceError(400, "invalid_video_id", "Invalid video id");
+    }
+    if (!recordId || !mongoose_1.default.Types.ObjectId.isValid(recordId)) {
+        throw new VideoAnalysisRecordServiceError(400, "invalid_record_id", "Invalid analysis record id");
+    }
+    const deleted = yield VideoAnalysisRecord_1.default.findOneAndDelete({ _id: recordId, videoId });
+    if (!deleted) {
+        throw new VideoAnalysisRecordServiceError(404, "record_not_found", "Analysis record not found");
+    }
+    return deleted.toObject ? deleted.toObject() : deleted;
+});
+exports.deleteVideoAnalysisRecordById = deleteVideoAnalysisRecordById;
 //# sourceMappingURL=videoAnalysisRecordService.js.map

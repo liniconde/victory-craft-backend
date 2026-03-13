@@ -72,3 +72,20 @@ export const listVideoAnalysisRecordsByVideoId = async (
     },
   };
 };
+
+export const deleteVideoAnalysisRecordById = async (videoId: string, recordId: string) => {
+  if (!videoId || !mongoose.Types.ObjectId.isValid(videoId)) {
+    throw new VideoAnalysisRecordServiceError(400, "invalid_video_id", "Invalid video id");
+  }
+
+  if (!recordId || !mongoose.Types.ObjectId.isValid(recordId)) {
+    throw new VideoAnalysisRecordServiceError(400, "invalid_record_id", "Invalid analysis record id");
+  }
+
+  const deleted = await VideoAnalysisRecord.findOneAndDelete({ _id: recordId, videoId });
+  if (!deleted) {
+    throw new VideoAnalysisRecordServiceError(404, "record_not_found", "Analysis record not found");
+  }
+
+  return deleted.toObject ? deleted.toObject() : deleted;
+};

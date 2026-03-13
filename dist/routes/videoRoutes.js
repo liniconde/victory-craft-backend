@@ -22,6 +22,7 @@ router.post("/:id/analyzeVideo", analysisJobController_1.handleCreateAnalyzeVide
 router.post("/:id/analyzeAgent", analysisJobController_1.handleCreateAnalyzeAgentJob);
 router.get("/:id/analyzeVideo/:jobId/status", analysisJobController_1.handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", videoAnalysisRecordController_1.handleListVideoAnalysisRecords);
+router.delete("/:id/analysis-results/:recordId", videoAnalysisRecordController_1.handleDeleteVideoAnalysisRecord);
 router.get("/:id/analysis-artifacts", analysisArtifactController_1.handleListVideoAnalysisArtifacts);
 router.get("/:id/analyzeVideo/:jobId/artifacts", analysisArtifactController_1.handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", aiAnalysisController_1.analyzeVideoController);

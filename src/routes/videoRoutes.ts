@@ -17,7 +17,10 @@ import {
   handleListAnalysisJobArtifacts,
   handleListVideoAnalysisArtifacts,
 } from "../controllers/analysisArtifactController";
-import { handleListVideoAnalysisRecords } from "../controllers/videoAnalysisRecordController";
+import {
+  handleDeleteVideoAnalysisRecord,
+  handleListVideoAnalysisRecords,
+} from "../controllers/videoAnalysisRecordController";
 
 const router = express.Router();
 
@@ -33,6 +36,7 @@ router.post("/:id/analyzeVideo", handleCreateAnalyzeVideoJob);
 router.post("/:id/analyzeAgent", handleCreateAnalyzeAgentJob);
 router.get("/:id/analyzeVideo/:jobId/status", handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", handleListVideoAnalysisRecords);
+router.delete("/:id/analysis-results/:recordId", handleDeleteVideoAnalysisRecord);
 router.get("/:id/analysis-artifacts", handleListVideoAnalysisArtifacts);
 router.get("/:id/analyzeVideo/:jobId/artifacts", handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", analyzeVideoController);

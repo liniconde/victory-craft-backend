@@ -1001,6 +1001,35 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/{id}/analysis-results/{recordId}:
+    delete:
+      tags: [Videos]
+      summary: Eliminar un resultado puntual del historico de analisis
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: recordId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Registro del historico eliminado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteVideoAnalysisRecordResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /videos/{id}/analysis-artifacts:
     get:
       tags: [Videos]
@@ -1191,6 +1220,40 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /match-sessions/{id}/timeline:
+    get:
+      tags: [Streaming]
+      summary: Obtener timeline completo de una sesion de partido
+      description: >
+        Devuelve todos los segmentos de la sesion ordenados por `sequence`,
+        incluyendo inicio y fin acumulado para reproducir los clips en secuencia
+        continua desde frontend.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Timeline completo de la sesion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchSessionTimelineResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
 
   /rooms/{id}:
     get:
@@ -2931,6 +2994,72 @@ components:
         segment:
           $ref: "#/components/schemas/VideoSegment"
 
+    MatchSessionTimelineItem:
+      allOf:
+        - $ref: "#/components/schemas/VideoSegment"
+        - type: object
+          properties:
+            timelineStartSec:
+              type: number
+            timelineEndSec:
+              type: number
+            sequenceGapFromPrevious:
+              type: integer
+            isContiguousWithPrevious:
+              type: boolean
+
+    MatchSessionTimelineResponse:
+      type: object
+      properties:
+        matchSession:
+          type: object
+          properties:
+            _id:
+              type: string
+            ownerId:
+              type: string
+            title:
+              type: string
+            status:
+              type: string
+              enum: [active, ended]
+            endedAt:
+              type: string
+              format: date-time
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            persistedTotalDurationSec:
+              type: number
+            computedTotalDurationSec:
+              type: number
+            roomCount:
+              type: integer
+        timeline:
+          type: object
+          properties:
+            clipCount:
+              type: integer
+            totalDurationSec:
+              type: number
+            firstSequence:
+              type: integer
+            lastSequence:
+              type: integer
+            expectedSegmentCount:
+              type: integer
+            missingSegmentsCount:
+              type: integer
+            hasSequenceGaps:
+              type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MatchSessionTimelineItem"
+
     MatchSessionSummary:
       type: object
       properties:
@@ -3030,6 +3159,15 @@ components:
             $ref: "#/components/schemas/VideoAnalysisRecord"
         pagination:
           $ref: "#/components/schemas/PaginationMeta"
+
+    DeleteVideoAnalysisRecordResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Analysis record deleted
+        record:
+          $ref: "#/components/schemas/VideoAnalysisRecord"
 
     AnalysisArtifactFrontendProjection:
       type: object

@@ -4,6 +4,7 @@ import {
   createRoomForSession,
   createSegment,
   closeRoomStream,
+  getMatchSessionTimeline,
   getRoomDetails,
   joinRoom,
   leaveRoom,
@@ -71,6 +72,21 @@ export const handleCreateSegment = async (req: ReqWithUser, res: Response) => {
 
     const result = await createSegment(req.params.id as string, ownerId, req.body || {});
     res.status(result.created ? 201 : 200).json(result);
+  } catch (error: any) {
+    handleError(res, error);
+  }
+};
+
+export const handleGetMatchSessionTimeline = async (req: ReqWithUser, res: Response) => {
+  try {
+    const userId = getAuthUserId(req);
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized", code: "unauthorized" });
+      return;
+    }
+
+    const result = await getMatchSessionTimeline(req.params.id as string, userId);
+    res.status(200).json(result);
   } catch (error: any) {
     handleError(res, error);
   }
