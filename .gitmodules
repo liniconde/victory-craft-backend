@@ -1,0 +1,4 @@
+[submodule "infra/shared-terraform"]
+	path = infra/shared-terraform
+	url = https://github.com/js-velasquez2463/victorycraft-infra.git
+	branch = main
