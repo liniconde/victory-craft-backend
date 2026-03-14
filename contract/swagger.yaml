@@ -794,6 +794,29 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/gemini/tokens/last:
+    get:
+      tags: [Videos]
+      summary: Obtener resumen de consumo de tokens Gemini
+      description: >
+        Retorna el ultimo consumo registrado y acumulados persistidos en MongoDB.
+        Incluye `recent` con los ultimos 10 registros.
+      responses:
+        "200":
+          description: Resumen de uso de tokens capturado desde usageMetadata
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiTokenUsageSummaryResponse"
+        "404":
+          description: Aun no existe consumo registrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /videos/{id}/analyzeVideo:
     post:
       tags: [Videos]
@@ -2797,6 +2820,44 @@ components:
         input:
           type: object
           additionalProperties: true
+
+    LastGeminiTokenUsageResponse:
+      type: object
+      properties:
+        model:
+          type: string
+        at:
+          type: string
+          format: date-time
+        usageMetadata:
+          type: object
+          additionalProperties: true
+        totalTokenCount:
+          type: integer
+          nullable: true
+
+    GeminiTokenUsageSummaryResponse:
+      type: object
+      properties:
+        last:
+          $ref: "#/components/schemas/LastGeminiTokenUsageResponse"
+        totals:
+          type: object
+          properties:
+            requests:
+              type: integer
+            totalTokenCount:
+              type: integer
+            promptTokenCount:
+              type: integer
+            candidatesTokenCount:
+              type: integer
+        historySize:
+          type: integer
+        recent:
+          type: array
+          items:
+            $ref: "#/components/schemas/LastGeminiTokenUsageResponse"
 
     WorkerToolConfig:
       type: object

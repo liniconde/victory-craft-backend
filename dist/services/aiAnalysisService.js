@@ -35,6 +35,7 @@ const https_1 = __importDefault(require("https"));
 const Video_1 = __importDefault(require("../models/Video"));
 const Field_1 = __importDefault(require("../models/Field"));
 const s3FilesService_1 = require("./s3FilesService");
+const geminiTokenUsageService_1 = require("./geminiTokenUsageService");
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 if (!GEMINI_API_KEY) {
     console.warn("GEMINI_API_KEY is not set in environment variables.");
@@ -203,6 +204,7 @@ const analyzeVideoInternal = (videoId, options) => __awaiter(void 0, void 0, voi
         ]);
         const response = yield result.response;
         const textResponse = response.text();
+        yield (0, geminiTokenUsageService_1.registerGeminiUsageFromGenerateResponse)(modelConfig.model, response, "video_analysis");
         // 7. Parse and Save Stats
         const parsed = tryParseJson(textResponse);
         const persistToVideoStats = (options === null || options === void 0 ? void 0 : options.persistToVideoStats) !== false;

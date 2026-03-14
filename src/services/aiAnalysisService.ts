@@ -19,6 +19,7 @@ import https from "https";
 import Video from "../models/Video";
 import Field from "../models/Field";
 import { getObjectS3SignedUrl } from "./s3FilesService";
+import { registerGeminiUsageFromGenerateResponse } from "./geminiTokenUsageService";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -230,6 +231,7 @@ const analyzeVideoInternal = async (videoId: string, options?: AnalyzeVideoOptio
 
     const response = await result.response;
     const textResponse = response.text();
+    await registerGeminiUsageFromGenerateResponse(modelConfig.model, response, "video_analysis");
 
     // 7. Parse and Save Stats
     const parsed = tryParseJson(textResponse);

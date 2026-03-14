@@ -9,8 +9,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.analyzeVideoController = void 0;
+exports.getLastGeminiTokenUsageController = exports.analyzeVideoController = void 0;
 const aiAnalysisService_1 = require("../services/aiAnalysisService");
+const geminiTokenUsageService_1 = require("../services/geminiTokenUsageService");
 const analyzeVideoController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { videoId } = req.params;
@@ -30,4 +31,23 @@ const analyzeVideoController = (req, res) => __awaiter(void 0, void 0, void 0, f
     }
 });
 exports.analyzeVideoController = analyzeVideoController;
+const getLastGeminiTokenUsageController = (_req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const summary = yield (0, geminiTokenUsageService_1.getGeminiTokenUsageSummary)();
+        if (!summary.last) {
+            res.status(404).json({
+                error: "No Gemini token usage has been registered yet.",
+            });
+            return;
+        }
+        res.status(200).json(summary);
+        return;
+    }
+    catch (error) {
+        console.error("Error in getLastGeminiTokenUsageController:", error);
+        res.status(500).json({ error: error.message });
+        return;
+    }
+});
+exports.getLastGeminiTokenUsageController = getLastGeminiTokenUsageController;
 //# sourceMappingURL=aiAnalysisController.js.map

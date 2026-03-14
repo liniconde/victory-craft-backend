@@ -27,5 +27,6 @@ router.get("/:id/analysis-artifacts", analysisArtifactController_1.handleListVid
 router.get("/:id/analysis-artifacts/:artifactId/signed-url", analysisArtifactController_1.handleGetAnalysisArtifactSignedUrl);
 router.get("/:id/analyzeVideo/:jobId/artifacts", analysisArtifactController_1.handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", aiAnalysisController_1.analyzeVideoController);
+router.get("/gemini/tokens/last", aiAnalysisController_1.getLastGeminiTokenUsageController);
 exports.default = router;
 //# sourceMappingURL=videoRoutes.js.map

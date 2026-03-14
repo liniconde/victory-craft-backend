@@ -7,7 +7,10 @@ import {
   handleUploadVideo,
   handleUpdateVideo
 } from "../controllers/videoController";
-import { analyzeVideoController } from "../controllers/aiAnalysisController";
+import {
+  analyzeVideoController,
+  getLastGeminiTokenUsageController,
+} from "../controllers/aiAnalysisController";
 import {
   handleCreateAnalyzeAgentJob,
   handleCreateAnalyzeVideoJob,
@@ -42,5 +45,6 @@ router.get("/:id/analysis-artifacts", handleListVideoAnalysisArtifacts);
 router.get("/:id/analysis-artifacts/:artifactId/signed-url", handleGetAnalysisArtifactSignedUrl);
 router.get("/:id/analyzeVideo/:jobId/artifacts", handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", analyzeVideoController);
+router.get("/gemini/tokens/last", getLastGeminiTokenUsageController);
 
 export default router;
