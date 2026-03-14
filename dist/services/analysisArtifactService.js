@@ -12,9 +12,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.listAnalysisArtifactsByJobId = exports.listAnalysisArtifactsByVideoId = exports.upsertAnalysisArtifacts = exports.AnalysisArtifactServiceError = void 0;
+exports.getAnalysisArtifactSignedDownloadUrl = exports.listAnalysisArtifactsByJobId = exports.listAnalysisArtifactsByVideoId = exports.upsertAnalysisArtifacts = exports.AnalysisArtifactServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const AnalysisArtifact_1 = __importDefault(require("../models/AnalysisArtifact"));
+const s3FilesService_1 = require("./s3FilesService");
 class AnalysisArtifactServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -138,4 +139,35 @@ const listAnalysisArtifactsByJobId = (analysisJobId, options) => __awaiter(void 
     };
 });
 exports.listAnalysisArtifactsByJobId = listAnalysisArtifactsByJobId;
+const getAnalysisArtifactSignedDownloadUrl = (videoId, artifactId, options) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    assertObjectId(videoId, "invalid_video_id", "Invalid video id");
+    if (!artifactId || !String(artifactId).trim()) {
+        throw new AnalysisArtifactServiceError(400, "invalid_artifact_id", "Invalid artifact id");
+    }
+    const trimmedArtifactId = String(artifactId).trim();
+    const artifactQuery = [{ artifactId: trimmedArtifactId }];
+    if (mongoose_1.default.Types.ObjectId.isValid(trimmedArtifactId)) {
+        artifactQuery.push({ _id: toObjectId(trimmedArtifactId) });
+    }
+    const artifact = yield AnalysisArtifact_1.default.findOne({
+        videoId: buildCompatibleIdQuery(videoId),
+        $or: artifactQuery,
+    });
+    if (!artifact) {
+        throw new AnalysisArtifactServiceError(404, "artifact_not_found", "Analysis artifact not found");
+    }
+    const objectKey = (_a = artifact.storage) === null || _a === void 0 ? void 0 : _a.s3Key;
+    if (!objectKey || !String(objectKey).trim()) {
+        throw new AnalysisArtifactServiceError(422, "artifact_missing_s3_key", "Artifact does not have storage.s3Key");
+    }
+    const expiresIn = Math.max(1, Math.floor((options === null || options === void 0 ? void 0 : options.expiresIn) || 900));
+    const downloadUrl = (0, s3FilesService_1.getObjectS3SignedUrl)(objectKey, expiresIn);
+    return {
+        downloadUrl,
+        objectKey,
+        expiresIn,
+    };
+});
+exports.getAnalysisArtifactSignedDownloadUrl = getAnalysisArtifactSignedDownloadUrl;
 //# sourceMappingURL=analysisArtifactService.js.map

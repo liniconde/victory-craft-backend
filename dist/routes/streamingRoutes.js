@@ -9,6 +9,7 @@ const streamingController_1 = require("../controllers/streamingController");
 const router = express_1.default.Router();
 router.get("/match-sessions", authMiddleware_1.requireAuth, streamingController_1.handleListMatchSessions);
 router.post("/match-sessions", authMiddleware_1.requireAuth, streamingController_1.handleCreateMatchSession);
+router.delete("/match-sessions/:id", authMiddleware_1.requireAuth, streamingController_1.handleDeleteMatchSession);
 router.post("/match-sessions/:id/rooms", authMiddleware_1.requireAuth, streamingController_1.handleCreateRoomForSession);
 router.post("/match-sessions/:id/segments", authMiddleware_1.requireAuth, streamingController_1.handleCreateSegment);
 router.get("/match-sessions/:id/timeline", authMiddleware_1.requireAuth, streamingController_1.handleGetMatchSessionTimeline);

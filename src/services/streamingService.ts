@@ -4,6 +4,7 @@ import StreamRoom from "../models/StreamRoom";
 import RoomParticipant from "../models/RoomParticipant";
 import VideoSegment from "../models/VideoSegment";
 import { getObjectS3SignedUrl } from "./s3FilesService";
+import { deleteObjectS3 } from "./s3FilesService";
 import { roomEventsBus } from "./roomEventsService";
 import {
   CreateVideoSegmentDto,
@@ -26,6 +27,11 @@ const assertObjectId = (value: string, field: string) => {
   if (!value || !mongoose.Types.ObjectId.isValid(value)) {
     throw new StreamingServiceError(400, `invalid_${field}`, `${field} is invalid`);
   }
+};
+
+const isS3NotFoundError = (error: any) => {
+  const errorCode = error?.code || error?.name;
+  return errorCode === "NoSuchKey" || errorCode === "NotFound";
 };
 
 const ensureRoomAccess = async (roomId: string, userId: string) => {
@@ -171,6 +177,67 @@ export const listUserMatchSessions = async (userId: string) => {
   return {
     items,
     total: items.length,
+  };
+};
+
+export const deleteMatchSessionById = async (matchSessionId: string, ownerId: string) => {
+  assertObjectId(matchSessionId, "matchSessionId");
+  assertObjectId(ownerId, "ownerId");
+
+  const session = await MatchSession.findById(matchSessionId);
+  if (!session) {
+    throw new StreamingServiceError(404, "session_not_found", "Match session not found");
+  }
+  if (String(session.ownerId) !== ownerId) {
+    throw new StreamingServiceError(403, "forbidden", "Only owner can delete match session");
+  }
+
+  const [rooms, segments] = await Promise.all([
+    StreamRoom.find({ matchSessionId }, { _id: 1 }).lean(),
+    VideoSegment.find({ matchSessionId }, { s3Key: 1 }).lean(),
+  ]);
+
+  const roomIds = rooms.map((room) => room._id);
+  const s3Keys = new Set<string>();
+  segments.forEach((segment: any) => {
+    const key = String(segment?.s3Key || "").trim();
+    if (key) s3Keys.add(key);
+  });
+
+  const s3DeleteErrors: string[] = [];
+  await Promise.all(
+    [...s3Keys].map(async (objectKey) => {
+      try {
+        await deleteObjectS3(objectKey);
+      } catch (error: any) {
+        if (!isS3NotFoundError(error)) {
+          s3DeleteErrors.push(`${objectKey}: ${error?.message || "unknown error"}`);
+        }
+      }
+    }),
+  );
+
+  if (s3DeleteErrors.length > 0) {
+    throw new StreamingServiceError(
+      502,
+      "s3_delete_failed",
+      `Failed to delete object(s) from S3: ${s3DeleteErrors.join(" | ")}`,
+    );
+  }
+
+  await Promise.all([
+    MatchSession.findByIdAndDelete(matchSessionId),
+    StreamRoom.deleteMany({ matchSessionId }),
+    VideoSegment.deleteMany({ matchSessionId }),
+    roomIds.length ? RoomParticipant.deleteMany({ roomId: { $in: roomIds } }) : Promise.resolve(),
+  ]);
+
+  return {
+    message: "Match session deleted successfully",
+    deletedMatchSessionId: matchSessionId,
+    deletedRoomsCount: rooms.length,
+    deletedSegmentsCount: segments.length,
+    deletedS3ObjectsCount: s3Keys.size,
   };
 };
 

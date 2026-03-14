@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import {
   AnalysisArtifactServiceError,
+  getAnalysisArtifactSignedDownloadUrl,
   listAnalysisArtifactsByJobId,
   listAnalysisArtifactsByVideoId,
 } from "../services/analysisArtifactService";
@@ -31,6 +32,18 @@ export const handleListAnalysisJobArtifacts = async (req: Request, res: Response
     const page = Number(req.query.page || 1);
     const limit = Number(req.query.limit || 20);
     const result = await listAnalysisArtifactsByJobId(jobId as string, { page, limit });
+    res.status(200).json(result);
+  } catch (error: any) {
+    handleArtifactError(res, error);
+  }
+};
+
+export const handleGetAnalysisArtifactSignedUrl = async (req: Request, res: Response) => {
+  try {
+    const { id: videoId, artifactId } = req.params;
+    const result = await getAnalysisArtifactSignedDownloadUrl(videoId as string, artifactId as string, {
+      expiresIn: 900,
+    });
     res.status(200).json(result);
   } catch (error: any) {
     handleArtifactError(res, error);

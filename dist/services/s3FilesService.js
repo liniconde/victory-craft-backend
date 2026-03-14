@@ -19,10 +19,6 @@ dotenv_1.default.config();
 const s3 = new aws_sdk_1.default.S3({
     signatureVersion: "v4",
     region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
 });
 const BUCKET_NAME = process.env.BUCKET_NAME || "victory-craft";
 const getUploadS3SignedUrl = (objectKey) => {
@@ -37,14 +33,11 @@ const getUploadS3SignedUrl = (objectKey) => {
     return { s3Url, objectKey, url };
 };
 exports.getUploadS3SignedUrl = getUploadS3SignedUrl;
-const getObjectS3SignedUrl = (objectKey) => {
-    console.log("object keyy", objectKey);
-    const signedUrlExpireSeconds = 60 * 5; // URL válida por 5 minutos
-    // Obtiene la URL firmada
+const getObjectS3SignedUrl = (objectKey, expiresInSeconds = 60 * 5) => {
     const url = s3.getSignedUrl("getObject", {
         Bucket: BUCKET_NAME,
         Key: objectKey,
-        Expires: signedUrlExpireSeconds,
+        Expires: expiresInSeconds,
     });
     return url;
 };

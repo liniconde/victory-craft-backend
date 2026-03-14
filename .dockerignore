@@ -5,3 +5,11 @@ dist
 npm-debug.log
 Dockerfile*
 docker-compose*
+.env
+.env.*
+.vercel
+tests
+tmp
+contract
+README.md
+*.md

@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleListAnalysisJobArtifacts = exports.handleListVideoAnalysisArtifacts = void 0;
+exports.handleGetAnalysisArtifactSignedUrl = exports.handleListAnalysisJobArtifacts = exports.handleListVideoAnalysisArtifacts = void 0;
 const analysisArtifactService_1 = require("../services/analysisArtifactService");
 const handleArtifactError = (res, error) => {
     if (error instanceof analysisArtifactService_1.AnalysisArtifactServiceError) {
@@ -44,4 +44,17 @@ const handleListAnalysisJobArtifacts = (req, res) => __awaiter(void 0, void 0, v
     }
 });
 exports.handleListAnalysisJobArtifacts = handleListAnalysisJobArtifacts;
+const handleGetAnalysisArtifactSignedUrl = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id: videoId, artifactId } = req.params;
+        const result = yield (0, analysisArtifactService_1.getAnalysisArtifactSignedDownloadUrl)(videoId, artifactId, {
+            expiresIn: 900,
+        });
+        res.status(200).json(result);
+    }
+    catch (error) {
+        handleArtifactError(res, error);
+    }
+});
+exports.handleGetAnalysisArtifactSignedUrl = handleGetAnalysisArtifactSignedUrl;
 //# sourceMappingURL=analysisArtifactController.js.map

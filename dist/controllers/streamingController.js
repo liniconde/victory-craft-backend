@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleSubscribeRoomEvents = exports.handleCloseRoom = exports.handleLeaveRoom = exports.handleJoinRoom = exports.handleGetRoomSegments = exports.handleGetRoom = exports.handleGetMatchSessionTimeline = exports.handleCreateSegment = exports.handleCreateRoomForSession = exports.handleListMatchSessions = exports.handleCreateMatchSession = void 0;
+exports.handleSubscribeRoomEvents = exports.handleCloseRoom = exports.handleLeaveRoom = exports.handleJoinRoom = exports.handleGetRoomSegments = exports.handleGetRoom = exports.handleGetMatchSessionTimeline = exports.handleCreateSegment = exports.handleCreateRoomForSession = exports.handleListMatchSessions = exports.handleDeleteMatchSession = exports.handleCreateMatchSession = void 0;
 const streamingService_1 = require("../services/streamingService");
 const roomEventsService_1 = require("../services/roomEventsService");
 const getAuthUserId = (req) => { var _a, _b, _c; return ((_a = req.user) === null || _a === void 0 ? void 0 : _a.id) || ((_b = req.user) === null || _b === void 0 ? void 0 : _b._id) || ((_c = req.user) === null || _c === void 0 ? void 0 : _c.userId); };
@@ -37,6 +37,21 @@ const handleCreateMatchSession = (req, res) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.handleCreateMatchSession = handleCreateMatchSession;
+const handleDeleteMatchSession = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const ownerId = getAuthUserId(req);
+        if (!ownerId) {
+            res.status(401).json({ message: "Unauthorized", code: "unauthorized" });
+            return;
+        }
+        const result = yield (0, streamingService_1.deleteMatchSessionById)(req.params.id, ownerId);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        handleError(res, error);
+    }
+});
+exports.handleDeleteMatchSession = handleDeleteMatchSession;
 const handleListMatchSessions = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = getAuthUserId(req);

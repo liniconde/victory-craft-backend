@@ -6,6 +6,7 @@ import AnalysisArtifact, {
   AnalysisArtifactStatus,
   AnalysisArtifactType,
 } from "../models/AnalysisArtifact";
+import { getObjectS3SignedUrl } from "./s3FilesService";
 
 type AnalysisArtifactInput = {
   videoId: string;
@@ -188,5 +189,50 @@ export const listAnalysisArtifactsByJobId = async (
       hasNextPage: page * limit < total,
       hasPrevPage: page > 1,
     },
+  };
+};
+
+export const getAnalysisArtifactSignedDownloadUrl = async (
+  videoId: string,
+  artifactId: string,
+  options?: { expiresIn?: number },
+) => {
+  assertObjectId(videoId, "invalid_video_id", "Invalid video id");
+
+  if (!artifactId || !String(artifactId).trim()) {
+    throw new AnalysisArtifactServiceError(400, "invalid_artifact_id", "Invalid artifact id");
+  }
+
+  const trimmedArtifactId = String(artifactId).trim();
+  const artifactQuery: any[] = [{ artifactId: trimmedArtifactId }];
+  if (mongoose.Types.ObjectId.isValid(trimmedArtifactId)) {
+    artifactQuery.push({ _id: toObjectId(trimmedArtifactId) });
+  }
+
+  const artifact = await AnalysisArtifact.findOne({
+    videoId: buildCompatibleIdQuery(videoId),
+    $or: artifactQuery,
+  });
+
+  if (!artifact) {
+    throw new AnalysisArtifactServiceError(404, "artifact_not_found", "Analysis artifact not found");
+  }
+
+  const objectKey = artifact.storage?.s3Key;
+  if (!objectKey || !String(objectKey).trim()) {
+    throw new AnalysisArtifactServiceError(
+      422,
+      "artifact_missing_s3_key",
+      "Artifact does not have storage.s3Key",
+    );
+  }
+
+  const expiresIn = Math.max(1, Math.floor(options?.expiresIn || 900));
+  const downloadUrl = getObjectS3SignedUrl(objectKey, expiresIn);
+
+  return {
+    downloadUrl,
+    objectKey,
+    expiresIn,
   };
 };

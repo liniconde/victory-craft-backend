@@ -8,8 +8,10 @@ RUN npm ci
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY scripts/start-workers.sh ./scripts/start-workers.sh
 
 RUN npm run build
+RUN chmod +x ./scripts/start-workers.sh
 
 EXPOSE 5001
 

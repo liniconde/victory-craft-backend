@@ -1071,6 +1071,44 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/{id}/analysis-artifacts/{artifactId}/signed-url:
+    get:
+      tags: [Videos]
+      summary: Generar URL firmada de descarga para un artefacto de analisis
+      description: >
+        Resuelve el artefacto por `artifactId` (o por `_id` del documento) dentro
+        del video indicado y devuelve una URL de descarga firmada en S3 (GetObject).
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: artifactId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: URL firmada de descarga del artefacto
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/S3DownloadResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          description: Artefacto sin storage.s3Key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /videos/{id}/analyzeVideo/{jobId}/artifacts:
     get:
       tags: [Videos]
@@ -1157,6 +1195,56 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /match-sessions/{id}:
+    delete:
+      tags: [Streaming]
+      summary: Eliminar sesion de partido y recursos asociados
+      description: >
+        Elimina la sesion si el usuario autenticado es el owner. Borra en cascada
+        salas, participantes, segmentos y los objetos S3 referenciados por esos segmentos.
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Sesion eliminada correctamente
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  deletedMatchSessionId:
+                    type: string
+                  deletedRoomsCount:
+                    type: integer
+                  deletedSegmentsCount:
+                    type: integer
+                  deletedS3ObjectsCount:
+                    type: integer
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "502":
+          description: Error al borrar uno o mas objetos en S3
           content:
             application/json:
               schema:
@@ -2311,8 +2399,12 @@ components:
       properties:
         downloadUrl:
           type: string
+          format: uri
         objectKey:
           type: string
+        expiresIn:
+          type: integer
+          description: Tiempo de expiracion de la URL firmada en segundos
 
     TeamStats:
       type: object

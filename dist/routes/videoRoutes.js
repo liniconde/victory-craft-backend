@@ -24,6 +24,7 @@ router.get("/:id/analyzeVideo/:jobId/status", analysisJobController_1.handleGetA
 router.get("/:id/analysis-results", videoAnalysisRecordController_1.handleListVideoAnalysisRecords);
 router.delete("/:id/analysis-results/:recordId", videoAnalysisRecordController_1.handleDeleteVideoAnalysisRecord);
 router.get("/:id/analysis-artifacts", analysisArtifactController_1.handleListVideoAnalysisArtifacts);
+router.get("/:id/analysis-artifacts/:artifactId/signed-url", analysisArtifactController_1.handleGetAnalysisArtifactSignedUrl);
 router.get("/:id/analyzeVideo/:jobId/artifacts", analysisArtifactController_1.handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", aiAnalysisController_1.analyzeVideoController);
 exports.default = router;

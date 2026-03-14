@@ -18,10 +18,6 @@ const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 const sqs = new aws_sdk_1.default.SQS({
     region: process.env.AWS_REGION,
-    credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-    },
 });
 const sendAnalysisJobToQueue = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     const queueUrl = process.env.ANALYSIS_JOBS_SQS_URL;

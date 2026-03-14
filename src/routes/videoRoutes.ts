@@ -14,6 +14,7 @@ import {
   handleGetAnalyzeVideoJobStatus,
 } from "../controllers/analysisJobController";
 import {
+  handleGetAnalysisArtifactSignedUrl,
   handleListAnalysisJobArtifacts,
   handleListVideoAnalysisArtifacts,
 } from "../controllers/analysisArtifactController";
@@ -38,6 +39,7 @@ router.get("/:id/analyzeVideo/:jobId/status", handleGetAnalyzeVideoJobStatus);
 router.get("/:id/analysis-results", handleListVideoAnalysisRecords);
 router.delete("/:id/analysis-results/:recordId", handleDeleteVideoAnalysisRecord);
 router.get("/:id/analysis-artifacts", handleListVideoAnalysisArtifacts);
+router.get("/:id/analysis-artifacts/:artifactId/signed-url", handleGetAnalysisArtifactSignedUrl);
 router.get("/:id/analyzeVideo/:jobId/artifacts", handleListAnalysisJobArtifacts);
 router.post("/:videoId/analyze", analyzeVideoController);
 

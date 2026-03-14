@@ -32,6 +32,10 @@ class VideoServiceError extends Error {
     }
 }
 exports.VideoServiceError = VideoServiceError;
+const isS3NotFoundError = (error) => {
+    const errorCode = (error === null || error === void 0 ? void 0 : error.code) || (error === null || error === void 0 ? void 0 : error.name);
+    return errorCode === "NoSuchKey" || errorCode === "NotFound";
+};
 /**
  * Agrega la URL firmada de S3 a un video antes de retornarlo.
  * @param video - Documento del video en la base de datos.
@@ -183,19 +187,34 @@ const deleteVideoById = (videoId) => __awaiter(void 0, void 0, void 0, function*
     if (!video) {
         throw new VideoServiceError(404, "video_not_found", "Video not found");
     }
-    if (video.s3Key) {
+    const videoObjectId = new mongoose_1.default.Types.ObjectId(videoId);
+    const [artifacts, segments] = yield Promise.all([
+        AnalysisArtifact_1.default.find({ videoId: videoObjectId }).select({ "storage.s3Key": 1 }).lean(),
+        VideoSegment_1.default.find({ libraryVideoId: videoObjectId }).select({ s3Key: 1 }).lean(),
+    ]);
+    const s3KeysToDelete = new Set();
+    const addS3Key = (value) => {
+        const key = (value || "").trim();
+        if (key)
+            s3KeysToDelete.add(key);
+    };
+    addS3Key(video.s3Key);
+    artifacts.forEach((artifact) => { var _a; return addS3Key((_a = artifact === null || artifact === void 0 ? void 0 : artifact.storage) === null || _a === void 0 ? void 0 : _a.s3Key); });
+    segments.forEach((segment) => addS3Key(segment === null || segment === void 0 ? void 0 : segment.s3Key));
+    const s3DeleteErrors = [];
+    yield Promise.all([...s3KeysToDelete].map((objectKey) => __awaiter(void 0, void 0, void 0, function* () {
         try {
-            yield (0, s3FilesService_3.deleteObjectS3)(video.s3Key);
+            yield (0, s3FilesService_3.deleteObjectS3)(objectKey);
         }
         catch (error) {
-            // If the file is already gone from S3, we continue with DB cleanup.
-            const errorCode = (error === null || error === void 0 ? void 0 : error.code) || (error === null || error === void 0 ? void 0 : error.name);
-            if (errorCode !== "NoSuchKey" && errorCode !== "NotFound") {
-                throw new VideoServiceError(502, "s3_delete_failed", `Failed to delete object from S3: ${(error === null || error === void 0 ? void 0 : error.message) || "unknown error"}`);
+            if (!isS3NotFoundError(error)) {
+                s3DeleteErrors.push(`${objectKey}: ${(error === null || error === void 0 ? void 0 : error.message) || "unknown error"}`);
             }
         }
+    })));
+    if (s3DeleteErrors.length > 0) {
+        throw new VideoServiceError(502, "s3_delete_failed", `Failed to delete object(s) from S3: ${s3DeleteErrors.join(" | ")}`);
     }
-    const videoObjectId = new mongoose_1.default.Types.ObjectId(videoId);
     yield Promise.all([
         Video_1.default.findByIdAndDelete(videoObjectId),
         VideoStats_1.default.deleteOne({ videoId: videoObjectId }),

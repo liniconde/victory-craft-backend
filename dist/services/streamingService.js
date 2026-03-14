@@ -12,13 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.closeRoomStream = exports.createSegment = exports.getMatchSessionTimeline = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.listUserMatchSessions = exports.createMatchSession = exports.StreamingServiceError = void 0;
+exports.closeRoomStream = exports.createSegment = exports.getMatchSessionTimeline = exports.listRoomSegments = exports.getRoomDetails = exports.leaveRoom = exports.joinRoom = exports.createRoomForSession = exports.deleteMatchSessionById = exports.listUserMatchSessions = exports.createMatchSession = exports.StreamingServiceError = void 0;
 const mongoose_1 = __importDefault(require("mongoose"));
 const MatchSession_1 = __importDefault(require("../models/MatchSession"));
 const StreamRoom_1 = __importDefault(require("../models/StreamRoom"));
 const RoomParticipant_1 = __importDefault(require("../models/RoomParticipant"));
 const VideoSegment_1 = __importDefault(require("../models/VideoSegment"));
 const s3FilesService_1 = require("./s3FilesService");
+const s3FilesService_2 = require("./s3FilesService");
 const roomEventsService_1 = require("./roomEventsService");
 class StreamingServiceError extends Error {
     constructor(status, code, message) {
@@ -32,6 +33,10 @@ const assertObjectId = (value, field) => {
     if (!value || !mongoose_1.default.Types.ObjectId.isValid(value)) {
         throw new StreamingServiceError(400, `invalid_${field}`, `${field} is invalid`);
     }
+};
+const isS3NotFoundError = (error) => {
+    const errorCode = (error === null || error === void 0 ? void 0 : error.code) || (error === null || error === void 0 ? void 0 : error.name);
+    return errorCode === "NoSuchKey" || errorCode === "NotFound";
 };
 const ensureRoomAccess = (roomId, userId) => __awaiter(void 0, void 0, void 0, function* () {
     const room = yield StreamRoom_1.default.findById(roomId);
@@ -161,6 +166,56 @@ const listUserMatchSessions = (userId) => __awaiter(void 0, void 0, void 0, func
     };
 });
 exports.listUserMatchSessions = listUserMatchSessions;
+const deleteMatchSessionById = (matchSessionId, ownerId) => __awaiter(void 0, void 0, void 0, function* () {
+    assertObjectId(matchSessionId, "matchSessionId");
+    assertObjectId(ownerId, "ownerId");
+    const session = yield MatchSession_1.default.findById(matchSessionId);
+    if (!session) {
+        throw new StreamingServiceError(404, "session_not_found", "Match session not found");
+    }
+    if (String(session.ownerId) !== ownerId) {
+        throw new StreamingServiceError(403, "forbidden", "Only owner can delete match session");
+    }
+    const [rooms, segments] = yield Promise.all([
+        StreamRoom_1.default.find({ matchSessionId }, { _id: 1 }).lean(),
+        VideoSegment_1.default.find({ matchSessionId }, { s3Key: 1 }).lean(),
+    ]);
+    const roomIds = rooms.map((room) => room._id);
+    const s3Keys = new Set();
+    segments.forEach((segment) => {
+        const key = String((segment === null || segment === void 0 ? void 0 : segment.s3Key) || "").trim();
+        if (key)
+            s3Keys.add(key);
+    });
+    const s3DeleteErrors = [];
+    yield Promise.all([...s3Keys].map((objectKey) => __awaiter(void 0, void 0, void 0, function* () {
+        try {
+            yield (0, s3FilesService_2.deleteObjectS3)(objectKey);
+        }
+        catch (error) {
+            if (!isS3NotFoundError(error)) {
+                s3DeleteErrors.push(`${objectKey}: ${(error === null || error === void 0 ? void 0 : error.message) || "unknown error"}`);
+            }
+        }
+    })));
+    if (s3DeleteErrors.length > 0) {
+        throw new StreamingServiceError(502, "s3_delete_failed", `Failed to delete object(s) from S3: ${s3DeleteErrors.join(" | ")}`);
+    }
+    yield Promise.all([
+        MatchSession_1.default.findByIdAndDelete(matchSessionId),
+        StreamRoom_1.default.deleteMany({ matchSessionId }),
+        VideoSegment_1.default.deleteMany({ matchSessionId }),
+        roomIds.length ? RoomParticipant_1.default.deleteMany({ roomId: { $in: roomIds } }) : Promise.resolve(),
+    ]);
+    return {
+        message: "Match session deleted successfully",
+        deletedMatchSessionId: matchSessionId,
+        deletedRoomsCount: rooms.length,
+        deletedSegmentsCount: segments.length,
+        deletedS3ObjectsCount: s3Keys.size,
+    };
+});
+exports.deleteMatchSessionById = deleteMatchSessionById;
 const createRoomForSession = (matchSessionId, ownerId) => __awaiter(void 0, void 0, void 0, function* () {
     assertObjectId(matchSessionId, "matchSessionId");
     assertObjectId(ownerId, "ownerId");

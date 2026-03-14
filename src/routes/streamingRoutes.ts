@@ -2,6 +2,7 @@ import express from "express";
 import { requireAuth } from "../middlewares/authMiddleware";
 import {
   handleCreateMatchSession,
+  handleDeleteMatchSession,
   handleListMatchSessions,
   handleCreateRoomForSession,
   handleCreateSegment,
@@ -18,6 +19,7 @@ const router = express.Router();
 
 router.get("/match-sessions", requireAuth, handleListMatchSessions);
 router.post("/match-sessions", requireAuth, handleCreateMatchSession);
+router.delete("/match-sessions/:id", requireAuth, handleDeleteMatchSession);
 router.post("/match-sessions/:id/rooms", requireAuth, handleCreateRoomForSession);
 router.post("/match-sessions/:id/segments", requireAuth, handleCreateSegment);
 router.get("/match-sessions/:id/timeline", requireAuth, handleGetMatchSessionTimeline);

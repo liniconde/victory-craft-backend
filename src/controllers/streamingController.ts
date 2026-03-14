@@ -3,6 +3,7 @@ import {
   createMatchSession,
   createRoomForSession,
   createSegment,
+  deleteMatchSessionById,
   closeRoomStream,
   getMatchSessionTimeline,
   getRoomDetails,
@@ -43,6 +44,21 @@ export const handleCreateMatchSession = async (req: ReqWithUser, res: Response) 
     const title = String(req.body?.title || "");
     const result = await createMatchSession(ownerId, title);
     res.status(201).json(result);
+  } catch (error: any) {
+    handleError(res, error);
+  }
+};
+
+export const handleDeleteMatchSession = async (req: ReqWithUser, res: Response) => {
+  try {
+    const ownerId = getAuthUserId(req);
+    if (!ownerId) {
+      res.status(401).json({ message: "Unauthorized", code: "unauthorized" });
+      return;
+    }
+
+    const result = await deleteMatchSessionById(req.params.id as string, ownerId);
+    res.status(200).json(result);
   } catch (error: any) {
     handleError(res, error);
   }

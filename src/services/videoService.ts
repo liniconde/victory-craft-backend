@@ -21,6 +21,11 @@ export class VideoServiceError extends Error {
   }
 }
 
+const isS3NotFoundError = (error: any) => {
+  const errorCode = error?.code || error?.name;
+  return errorCode === "NoSuchKey" || errorCode === "NotFound";
+};
+
 /**
  * Agrega la URL firmada de S3 a un video antes de retornarlo.
  * @param video - Documento del video en la base de datos.
@@ -179,23 +184,42 @@ export const deleteVideoById = async (videoId: string) => {
     throw new VideoServiceError(404, "video_not_found", "Video not found");
   }
 
-  if (video.s3Key) {
-    try {
-      await deleteObjectS3(video.s3Key);
-    } catch (error: any) {
-      // If the file is already gone from S3, we continue with DB cleanup.
-      const errorCode = error?.code || error?.name;
-      if (errorCode !== "NoSuchKey" && errorCode !== "NotFound") {
-        throw new VideoServiceError(
-          502,
-          "s3_delete_failed",
-          `Failed to delete object from S3: ${error?.message || "unknown error"}`,
-        );
-      }
-    }
-  }
-
   const videoObjectId = new mongoose.Types.ObjectId(videoId);
+  const [artifacts, segments] = await Promise.all([
+    AnalysisArtifact.find({ videoId: videoObjectId }).select({ "storage.s3Key": 1 }).lean(),
+    VideoSegment.find({ libraryVideoId: videoObjectId }).select({ s3Key: 1 }).lean(),
+  ]);
+
+  const s3KeysToDelete = new Set<string>();
+  const addS3Key = (value?: string) => {
+    const key = (value || "").trim();
+    if (key) s3KeysToDelete.add(key);
+  };
+
+  addS3Key(video.s3Key);
+  artifacts.forEach((artifact: any) => addS3Key(artifact?.storage?.s3Key));
+  segments.forEach((segment: any) => addS3Key(segment?.s3Key));
+
+  const s3DeleteErrors: string[] = [];
+  await Promise.all(
+    [...s3KeysToDelete].map(async (objectKey) => {
+      try {
+        await deleteObjectS3(objectKey);
+      } catch (error: any) {
+        if (!isS3NotFoundError(error)) {
+          s3DeleteErrors.push(`${objectKey}: ${error?.message || "unknown error"}`);
+        }
+      }
+    }),
+  );
+
+  if (s3DeleteErrors.length > 0) {
+    throw new VideoServiceError(
+      502,
+      "s3_delete_failed",
+      `Failed to delete object(s) from S3: ${s3DeleteErrors.join(" | ")}`,
+    );
+  }
 
   await Promise.all([
     Video.findByIdAndDelete(videoObjectId),
