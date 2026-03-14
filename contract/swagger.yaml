@@ -20,6 +20,7 @@ tags:
   - name: Streaming
   - name: Images
   - name: Concerts
+  - name: Workers
 paths:
   /healthz:
     get:
@@ -1148,6 +1149,56 @@ paths:
                 $ref: "#/components/schemas/AnalysisArtifactPaginatedResponse"
         "400":
           $ref: "#/components/responses/BadRequest"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workers/start:
+    post:
+      tags: [Workers]
+      summary: Encolar solicitud para encender workers ECS (demo/manual)
+      description: >
+        Publica un mensaje en la cola SQS de arranque manual de workers.
+        La Lambda consumidora escala el servicio ECS de workers a `desiredCount=1`.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+                  example: demo_frontend
+                metadata:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "202":
+          description: Solicitud de arranque encolada
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Workers start request queued
+                  queueUrl:
+                    type: string
+                    example: https://sqs.us-east-1.amazonaws.com/123456789012/workers-start
+                  messageId:
+                    type: string
+                  payload:
+                    type: object
+                    additionalProperties: true
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "500":
           $ref: "#/components/responses/InternalError"
 
