@@ -1,0 +1,1 @@
+{"version":3,"file":"errors.js","sourceRoot":"","sources":["../../../src/tournaments/services/errors.ts"],"names":[],"mappings":";;;AAAA,MAAa,sBAAuB,SAAQ,KAAK;IAI/C,YAAY,MAAc,EAAE,IAAY,EAAE,OAAe;QACvD,KAAK,CAAC,OAAO,CAAC,CAAC;QACf,IAAI,CAAC,MAAM,GAAG,MAAM,CAAC;QACrB,IAAI,CAAC,IAAI,GAAG,IAAI,CAAC;IACnB,CAAC;CACF;AATD,wDASC"}

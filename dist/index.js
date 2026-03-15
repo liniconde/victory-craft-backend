@@ -18,6 +18,7 @@ const videoStatsRoutes_1 = __importDefault(require("./routes/videoStatsRoutes"))
 const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 const streamingRoutes_1 = __importDefault(require("./routes/streamingRoutes"));
 const workersControlRoutes_1 = __importDefault(require("./routes/workersControlRoutes"));
+const routes_1 = __importDefault(require("./tournaments/routes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
@@ -97,6 +98,7 @@ app.use("/videos", videoRoutes_1.default);
 app.use("/video-stats", videoStatsRoutes_1.default);
 app.use("/notifications", notificationRoutes_1.default);
 app.use("/workers", workersControlRoutes_1.default);
+app.use("/tournaments", routes_1.default);
 app.use("/", streamingRoutes_1.default);
 // Export app for Vercel
 exports.default = app;

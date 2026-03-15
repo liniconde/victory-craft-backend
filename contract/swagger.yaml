@@ -17,6 +17,7 @@ tags:
   - name: Reservations
   - name: Videos
   - name: Video Stats
+  - name: Tournaments
   - name: Streaming
   - name: Images
   - name: Concerts
@@ -1175,6 +1176,519 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /tournaments:
+    get:
+      tags: [Tournaments]
+      summary: Listar torneos
+      parameters:
+        - in: query
+          name: sport
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [draft, registration_open, in_progress, completed, cancelled]
+      responses:
+        "200":
+          description: Lista de torneos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentListResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+    post:
+      tags: [Tournaments]
+      summary: Crear torneo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentCreateRequest"
+      responses:
+        "201":
+          description: Torneo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "409":
+          description: Recurso duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tournaments/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Obtener torneo por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Torneo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tournaments]
+      summary: Actualizar torneo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentUpdateRequest"
+      responses:
+        "200":
+          description: Torneo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Tournament"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tournaments]
+      summary: Eliminar torneo (cascada de equipos, jugadores, partidos y stats)
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Torneo eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteTournamentResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/{id}/generate-matches:
+    post:
+      tags: [Tournaments]
+      summary: Generar fixture de partidos para un torneo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Fixture generado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateTournamentMatchesResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/teams:
+    get:
+      tags: [Tournaments]
+      summary: Listar equipos de torneos
+      parameters:
+        - in: query
+          name: tournamentId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de equipos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentTeamListResponse"
+    post:
+      tags: [Tournaments]
+      summary: Crear equipo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentTeamCreateRequest"
+      responses:
+        "201":
+          description: Equipo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentTeam"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/teams/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Obtener equipo por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Equipo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentTeam"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tournaments]
+      summary: Actualizar equipo
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentTeamUpdateRequest"
+      responses:
+        "200":
+          description: Equipo actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentTeam"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tournaments]
+      summary: Eliminar equipo (cascada de jugadores/partidos/stats asociados)
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Equipo eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteTeamResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/matches:
+    get:
+      tags: [Tournaments]
+      summary: Listar partidos
+      parameters:
+        - in: query
+          name: tournamentId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: teamId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: status
+          required: false
+          schema:
+            type: string
+            enum: [scheduled, in_progress, finished, cancelled]
+      responses:
+        "200":
+          description: Lista de partidos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatchListResponse"
+    post:
+      tags: [Tournaments]
+      summary: Crear partido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentMatchCreateRequest"
+      responses:
+        "201":
+          description: Partido creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Recurso duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tournaments/matches/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Obtener partido por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Partido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatch"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tournaments]
+      summary: Actualizar partido
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentMatchUpdateRequest"
+      responses:
+        "200":
+          description: Partido actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatch"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tournaments]
+      summary: Eliminar partido (cascada de stats asociadas)
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Partido eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteMatchResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/matches/players:
+    get:
+      tags: [Tournaments]
+      summary: Listar jugadores
+      parameters:
+        - in: query
+          name: tournamentId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: teamId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de jugadores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentPlayerListResponse"
+    post:
+      tags: [Tournaments]
+      summary: Crear jugador
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentPlayerCreateRequest"
+      responses:
+        "201":
+          description: Jugador creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentPlayer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Recurso duplicado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tournaments/matches/players/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Obtener jugador por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Jugador
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentPlayer"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tournaments]
+      summary: Actualizar jugador
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentPlayerUpdateRequest"
+      responses:
+        "200":
+          description: Jugador actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentPlayer"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tournaments]
+      summary: Eliminar jugador
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Jugador eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeletePlayerResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/matches/match-stats:
+    get:
+      tags: [Tournaments]
+      summary: Listar estadisticas de partido
+      parameters:
+        - in: query
+          name: tournamentId
+          required: false
+          schema:
+            type: string
+        - in: query
+          name: matchId
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Lista de estadisticas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatchStatListResponse"
+    post:
+      tags: [Tournaments]
+      summary: Crear estadistica de partido
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentMatchStatCreateRequest"
+      responses:
+        "201":
+          description: Estadistica creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatchStat"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /tournaments/matches/match-stats/{id}:
+    get:
+      tags: [Tournaments]
+      summary: Obtener estadistica por ID
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Estadistica
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatchStat"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Tournaments]
+      summary: Actualizar estadistica de partido
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TournamentMatchStatUpdateRequest"
+      responses:
+        "200":
+          description: Estadistica actualizada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TournamentMatchStat"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Tournaments]
+      summary: Eliminar estadistica de partido
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          description: Estadistica eliminada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteMatchStatResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /workers/start:
     post:
       tags: [Workers]
@@ -2289,6 +2803,423 @@ components:
           type: string
         slot:
           type: string
+
+    Tournament:
+      type: object
+      properties:
+        _id:
+          type: string
+        name:
+          type: string
+        sport:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: string
+        status:
+          type: string
+          enum: [draft, registration_open, in_progress, completed, cancelled]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TournamentCreateRequest:
+      type: object
+      required: [name, sport]
+      properties:
+        name:
+          type: string
+        sport:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: string
+        status:
+          type: string
+          enum: [draft, registration_open, in_progress, completed, cancelled]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    TournamentUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        sport:
+          type: string
+        description:
+          type: string
+        ownerId:
+          type: string
+        status:
+          type: string
+          enum: [draft, registration_open, in_progress, completed, cancelled]
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    TournamentListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Tournament"
+        total:
+          type: integer
+
+    TournamentTeam:
+      type: object
+      properties:
+        _id:
+          type: string
+        tournamentId:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        logoUrl:
+          type: string
+        coachName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TournamentTeamCreateRequest:
+      type: object
+      required: [tournamentId, name]
+      properties:
+        tournamentId:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        logoUrl:
+          type: string
+        coachName:
+          type: string
+
+    TournamentTeamUpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        shortName:
+          type: string
+        logoUrl:
+          type: string
+        coachName:
+          type: string
+
+    TournamentTeamListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TournamentTeam"
+        total:
+          type: integer
+
+    TournamentPlayer:
+      type: object
+      properties:
+        _id:
+          type: string
+        teamId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: number
+        position:
+          type: string
+        birthDate:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TournamentPlayerCreateRequest:
+      type: object
+      required: [teamId, firstName, lastName]
+      properties:
+        teamId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: number
+        position:
+          type: string
+        birthDate:
+          type: string
+          format: date-time
+
+    TournamentPlayerUpdateRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        jerseyNumber:
+          type: number
+        position:
+          type: string
+        birthDate:
+          type: string
+          format: date-time
+
+    TournamentPlayerListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TournamentPlayer"
+        total:
+          type: integer
+
+    TournamentMatchScore:
+      type: object
+      required: [home, away]
+      properties:
+        home:
+          type: number
+          minimum: 0
+        away:
+          type: number
+          minimum: 0
+
+    TournamentMatch:
+      type: object
+      properties:
+        _id:
+          type: string
+        homeTeamId:
+          type: string
+        awayTeamId:
+          type: string
+        pairKey:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        round:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, in_progress, finished, cancelled]
+        score:
+          $ref: "#/components/schemas/TournamentMatchScore"
+        winnerTeamId:
+          type: string
+        matchSessionId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TournamentMatchCreateRequest:
+      type: object
+      required: [homeTeamId, awayTeamId]
+      properties:
+        homeTeamId:
+          type: string
+        awayTeamId:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        round:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, in_progress, finished, cancelled]
+        matchSessionId:
+          type: string
+
+    TournamentMatchUpdateRequest:
+      type: object
+      properties:
+        scheduledAt:
+          type: string
+          format: date-time
+        venue:
+          type: string
+        round:
+          type: string
+        status:
+          type: string
+          enum: [scheduled, in_progress, finished, cancelled]
+        score:
+          $ref: "#/components/schemas/TournamentMatchScore"
+        winnerTeamId:
+          type: string
+        matchSessionId:
+          type: string
+
+    TournamentMatchListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TournamentMatch"
+        total:
+          type: integer
+
+    TournamentMatchStat:
+      type: object
+      properties:
+        _id:
+          type: string
+        matchId:
+          type: string
+        sport:
+          type: string
+        stats:
+          type: object
+          additionalProperties: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    TournamentMatchStatCreateRequest:
+      type: object
+      required: [matchId, stats]
+      properties:
+        matchId:
+          type: string
+        sport:
+          type: string
+        stats:
+          type: object
+          additionalProperties: true
+
+    TournamentMatchStatUpdateRequest:
+      type: object
+      properties:
+        sport:
+          type: string
+        stats:
+          type: object
+          additionalProperties: true
+
+    TournamentMatchStatListResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/TournamentMatchStat"
+        total:
+          type: integer
+
+    DeleteTournamentResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        deletedTournamentId:
+          type: string
+        deletedTeamsCount:
+          type: integer
+        deletedMatchesCount:
+          type: integer
+
+    DeleteTeamResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        deletedTeamId:
+          type: string
+        deletedMatchesCount:
+          type: integer
+
+    DeletePlayerResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        deletedPlayerId:
+          type: string
+
+    DeleteMatchResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        deletedMatchId:
+          type: string
+        deletedStatsCount:
+          type: integer
+
+    DeleteMatchStatResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        deletedMatchStatId:
+          type: string
+
+    GenerateTournamentMatchesResponse:
+      type: object
+      properties:
+        tournamentId:
+          type: string
+        teamsCount:
+          type: integer
+        existingMatches:
+          type: integer
+        createdMatches:
+          type: integer
+        totalMatchesAfterGeneration:
+          type: integer
 
     Video:
       type: object
