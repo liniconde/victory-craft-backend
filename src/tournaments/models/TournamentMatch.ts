@@ -4,6 +4,7 @@ import { MatchStatus } from "../contracts/tournamentContracts";
 export interface ITournamentMatch extends Document {
   homeTeamId: mongoose.Types.ObjectId;
   awayTeamId: mongoose.Types.ObjectId;
+  fieldId?: mongoose.Types.ObjectId;
   pairKey: string;
   scheduledAt?: Date;
   venue?: string;
@@ -33,6 +34,7 @@ const TournamentMatchSchema = new Schema<ITournamentMatch>(
       required: true,
       index: true,
     },
+    fieldId: { type: Schema.Types.ObjectId, ref: "Field", required: false, index: true },
     pairKey: { type: String, required: true, trim: true },
     scheduledAt: { type: Date, required: false, index: true },
     venue: { type: String, required: false, trim: true },

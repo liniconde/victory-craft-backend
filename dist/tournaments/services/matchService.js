@@ -18,6 +18,7 @@ const Tournament_1 = __importDefault(require("../models/Tournament"));
 const TournamentTeam_1 = __importDefault(require("../models/TournamentTeam"));
 const TournamentMatch_1 = __importDefault(require("../models/TournamentMatch"));
 const TournamentMatchStat_1 = __importDefault(require("../models/TournamentMatchStat"));
+const Field_1 = __importDefault(require("../../models/Field"));
 const errors_1 = require("./errors");
 const utils_1 = require("./utils");
 const ensureTeamsForMatch = (homeTeamId, awayTeamId) => __awaiter(void 0, void 0, void 0, function* () {
@@ -36,6 +37,13 @@ const ensureTeamsForMatch = (homeTeamId, awayTeamId) => __awaiter(void 0, void 0
     }
     return { homeTeam, awayTeam };
 });
+const ensureFieldExists = (fieldId) => __awaiter(void 0, void 0, void 0, function* () {
+    (0, utils_1.assertObjectId)(fieldId, "fieldId");
+    const field = yield Field_1.default.findById(fieldId).lean();
+    if (!field) {
+        throw new errors_1.TournamentsDomainError(404, "field_not_found", "Field not found");
+    }
+});
 const createMatch = (payload) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     (0, utils_1.assertObjectId)(payload.homeTeamId, "homeTeamId");
@@ -43,11 +51,15 @@ const createMatch = (payload) => __awaiter(void 0, void 0, void 0, function* () 
     if (payload.matchSessionId) {
         (0, utils_1.assertObjectId)(payload.matchSessionId, "matchSessionId");
     }
+    if (typeof payload.fieldId === "string") {
+        yield ensureFieldExists(payload.fieldId);
+    }
     yield ensureTeamsForMatch(payload.homeTeamId, payload.awayTeamId);
     const pairKey = (0, utils_1.buildPairKey)(payload.homeTeamId, payload.awayTeamId);
     const created = yield TournamentMatch_1.default.create({
         homeTeamId: payload.homeTeamId,
         awayTeamId: payload.awayTeamId,
+        fieldId: payload.fieldId || undefined,
         pairKey,
         scheduledAt: (0, utils_1.parseOptionalDate)(payload.scheduledAt),
         venue: (_a = payload.venue) === null || _a === void 0 ? void 0 : _a.trim(),
@@ -105,6 +117,9 @@ const updateMatch = (id, payload) => __awaiter(void 0, void 0, void 0, function*
     if (payload.winnerTeamId) {
         (0, utils_1.assertObjectId)(payload.winnerTeamId, "winnerTeamId");
     }
+    if (typeof payload.fieldId === "string") {
+        yield ensureFieldExists(payload.fieldId);
+    }
     const match = yield TournamentMatch_1.default.findById(id);
     if (!match) {
         throw new errors_1.TournamentsDomainError(404, "match_not_found", "Match not found");
@@ -124,6 +139,10 @@ const updateMatch = (id, payload) => __awaiter(void 0, void 0, void 0, function*
         match.round = payload.round.trim();
     if (typeof payload.status === "string")
         match.status = payload.status;
+    if (typeof payload.fieldId !== "undefined") {
+        match.fieldId =
+            payload.fieldId === null ? undefined : new mongoose_1.default.Types.ObjectId(payload.fieldId);
+    }
     if (payload.matchSessionId)
         match.matchSessionId = new mongoose_1.default.Types.ObjectId(payload.matchSessionId);
     if (payload.score)

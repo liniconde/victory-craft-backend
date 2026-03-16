@@ -47,6 +47,7 @@ const TournamentMatchSchema = new mongoose_1.Schema({
         required: true,
         index: true,
     },
+    fieldId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Field", required: false, index: true },
     pairKey: { type: String, required: true, trim: true },
     scheduledAt: { type: Date, required: false, index: true },
     venue: { type: String, required: false, trim: true },

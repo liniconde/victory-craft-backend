@@ -38,6 +38,7 @@ export type UpdateTournamentPlayerDto = Partial<Omit<CreateTournamentPlayerDto, 
 export type CreateTournamentMatchDto = {
   homeTeamId: string;
   awayTeamId: string;
+  fieldId?: string | null;
   scheduledAt?: string | Date;
   venue?: string;
   round?: string;

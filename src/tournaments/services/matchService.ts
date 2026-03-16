@@ -7,6 +7,7 @@ import Tournament from "../models/Tournament";
 import TournamentTeam from "../models/TournamentTeam";
 import TournamentMatch from "../models/TournamentMatch";
 import TournamentMatchStat from "../models/TournamentMatchStat";
+import Field from "../../models/Field";
 import { TournamentsDomainError } from "./errors";
 import { assertObjectId, buildPairKey, parseOptionalDate } from "./utils";
 
@@ -31,12 +32,24 @@ const ensureTeamsForMatch = async (homeTeamId: string, awayTeamId: string) => {
   return { homeTeam, awayTeam };
 };
 
+const ensureFieldExists = async (fieldId: string) => {
+  assertObjectId(fieldId, "fieldId");
+
+  const field = await Field.findById(fieldId).lean();
+  if (!field) {
+    throw new TournamentsDomainError(404, "field_not_found", "Field not found");
+  }
+};
+
 export const createMatch = async (payload: CreateTournamentMatchDto) => {
   assertObjectId(payload.homeTeamId, "homeTeamId");
   assertObjectId(payload.awayTeamId, "awayTeamId");
 
   if (payload.matchSessionId) {
     assertObjectId(payload.matchSessionId, "matchSessionId");
+  }
+  if (typeof payload.fieldId === "string") {
+    await ensureFieldExists(payload.fieldId);
   }
 
   await ensureTeamsForMatch(payload.homeTeamId, payload.awayTeamId);
@@ -46,6 +59,7 @@ export const createMatch = async (payload: CreateTournamentMatchDto) => {
   const created = await TournamentMatch.create({
     homeTeamId: payload.homeTeamId,
     awayTeamId: payload.awayTeamId,
+    fieldId: payload.fieldId || undefined,
     pairKey,
     scheduledAt: parseOptionalDate(payload.scheduledAt),
     venue: payload.venue?.trim(),
@@ -113,6 +127,9 @@ export const updateMatch = async (id: string, payload: UpdateTournamentMatchDto)
   if (payload.winnerTeamId) {
     assertObjectId(payload.winnerTeamId, "winnerTeamId");
   }
+  if (typeof payload.fieldId === "string") {
+    await ensureFieldExists(payload.fieldId);
+  }
 
   const match = await TournamentMatch.findById(id);
   if (!match) {
@@ -132,6 +149,10 @@ export const updateMatch = async (id: string, payload: UpdateTournamentMatchDto)
   if (typeof payload.venue === "string") match.venue = payload.venue.trim();
   if (typeof payload.round === "string") match.round = payload.round.trim();
   if (typeof payload.status === "string") match.status = payload.status;
+  if (typeof payload.fieldId !== "undefined") {
+    match.fieldId =
+      payload.fieldId === null ? undefined : new mongoose.Types.ObjectId(payload.fieldId as string);
+  }
   if (payload.matchSessionId) match.matchSessionId = new mongoose.Types.ObjectId(payload.matchSessionId);
   if (payload.score) match.score = payload.score;
   if (payload.winnerTeamId) match.winnerTeamId = new mongoose.Types.ObjectId(payload.winnerTeamId);
