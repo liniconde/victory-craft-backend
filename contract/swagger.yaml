@@ -22,6 +22,7 @@ tags:
   - name: Images
   - name: Concerts
   - name: Workers
+  - name: Agent Planning
 paths:
   /healthz:
     get:
@@ -2424,6 +2425,34 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
 
+  /agent/plan:
+    post:
+      tags: [Agent Planning]
+      summary: Planificar acciones frontend con LLM
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentPlanRequest"
+      responses:
+        "200":
+          description: Plan de acciones normalizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPlanResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          description: Error del proveedor LLM
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /concerts/{id}:
     get:
       tags: [Concerts]
@@ -2545,6 +2574,94 @@ components:
         timestamp:
           type: string
           format: date-time
+
+    AgentParameter:
+      type: object
+      required: [name, type, description]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [string, number, boolean, object, array]
+        description:
+          type: string
+        required:
+          type: boolean
+        enum:
+          type: array
+          items:
+            oneOf:
+              - type: string
+              - type: number
+              - type: boolean
+
+    AgentReturn:
+      type: object
+      required: [name, type, description]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum: [string, number, boolean, object, array]
+        description:
+          type: string
+
+    AgentAction:
+      type: object
+      required: [name, description]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        parameters:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentParameter"
+        returns:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentReturn"
+        tags:
+          type: array
+          items:
+            type: string
+
+    AgentPlanRequest:
+      type: object
+      required: [prompt, currentPath, actions]
+      properties:
+        prompt:
+          type: string
+        currentPath:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentAction"
+
+    AgentPlanCall:
+      type: object
+      required: [name, arguments]
+      properties:
+        name:
+          type: string
+        arguments:
+          type: object
+          additionalProperties: true
+
+    AgentPlanResponse:
+      type: object
+      required: [summary, calls]
+      properties:
+        summary:
+          type: string
+        calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPlanCall"
 
     User:
       type: object
@@ -3033,6 +3150,9 @@ components:
           type: string
         awayTeamId:
           type: string
+        fieldId:
+          type: string
+          nullable: true
         pairKey:
           type: string
         scheduledAt:
@@ -3066,6 +3186,9 @@ components:
           type: string
         awayTeamId:
           type: string
+        fieldId:
+          type: string
+          nullable: true
         scheduledAt:
           type: string
           format: date-time
@@ -3082,6 +3205,9 @@ components:
     TournamentMatchUpdateRequest:
       type: object
       properties:
+        fieldId:
+          type: string
+          nullable: true
         scheduledAt:
           type: string
           format: date-time

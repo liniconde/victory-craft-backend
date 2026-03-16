@@ -53,6 +53,10 @@ GOOGLE_CALLBACK_URL=https://victory-craft-backend.vercel.app/users/oauth2/google
 OAUTH_ALLOWED_REDIRECT_URIS=https://victory-craft-front.vercel.app/auth/callback,https://victory-craft-front-spa.vercel.app/auth/callback,http://localhost:5173/auth/callback
 CORS_ALLOWED_ORIGINS=https://victory-craft-front.vercel.app,https://victory-craft-front-spa.vercel.app,http://localhost:5173
 ANALYSIS_JOBS_SQS_URL=https://sqs.us-east-1.amazonaws.com/<account-id>/<queue-name>
+AGENT_PLANNER_PROVIDER=gemini
+AGENT_PLANNER_GEMINI_MODEL=gemini-2.5-flash
+AGENT_PLANNER_GEMINI_TEMPERATURE=0
+AGENT_PLANNER_TIMEOUT_MS=12000
 ```
 
 ### **4️⃣ Ejecutar el backend**
@@ -270,4 +274,3 @@ Este proyecto está bajo la **Licencia MIT**. Puedes usarlo y modificarlo librem
 curl -N "http://localhost:5001/rooms/<ROOM_ID>/events" \
   -H "Authorization: Bearer <JWT_APP>"
 ```
-

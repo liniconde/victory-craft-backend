@@ -14,6 +14,7 @@ import notificationRoutes from "./routes/notificationRoutes";
 import streamingRoutes from "./routes/streamingRoutes";
 import workersControlRoutes from "./routes/workersControlRoutes";
 import tournamentDomainRoutes from "./tournaments/routes";
+import agentPlanningRoutes from "./agent-planning/presentation/routes";
 
 dotenv.config();
 
@@ -107,6 +108,7 @@ app.use("/video-stats", videoStatsRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/workers", workersControlRoutes);
 app.use("/tournaments", tournamentDomainRoutes);
+app.use("/agent", agentPlanningRoutes);
 app.use("/", streamingRoutes);
 
 // Export app for Vercel
