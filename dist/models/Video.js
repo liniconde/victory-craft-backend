@@ -49,6 +49,7 @@ const VideoSchema = new mongoose_1.Schema({
         enum: ["football", "padel", "tennis", "basketball", "other"],
         required: false,
     },
+    ownerUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: false, index: true },
     s3Key: { type: String, required: true },
     s3Url: { type: String },
     googleAiFileId: { type: String }, // Store Google AI File ID

@@ -18,6 +18,7 @@ const videoStatsRoutes_1 = __importDefault(require("./routes/videoStatsRoutes"))
 const notificationRoutes_1 = __importDefault(require("./routes/notificationRoutes"));
 const streamingRoutes_1 = __importDefault(require("./routes/streamingRoutes"));
 const workersControlRoutes_1 = __importDefault(require("./routes/workersControlRoutes"));
+const recruiterRoutes_1 = __importDefault(require("./recruiters-ms/presentation/recruiterRoutes"));
 const routes_1 = __importDefault(require("./tournaments/routes"));
 const routes_2 = __importDefault(require("./agent-planning/presentation/routes"));
 dotenv_1.default.config();
@@ -99,6 +100,7 @@ app.use("/videos", videoRoutes_1.default);
 app.use("/video-stats", videoStatsRoutes_1.default);
 app.use("/notifications", notificationRoutes_1.default);
 app.use("/workers", workersControlRoutes_1.default);
+app.use("/recruiters", recruiterRoutes_1.default);
 app.use("/tournaments", routes_1.default);
 app.use("/agent", routes_2.default);
 app.use("/", streamingRoutes_1.default);

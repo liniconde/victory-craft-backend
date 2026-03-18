@@ -628,6 +628,13 @@ paths:
             type: string
             enum: [football, padel, tennis, basketball, other]
           description: Filtra por tipo de deporte del video
+        - in: query
+          name: mine
+          required: false
+          schema:
+            type: boolean
+            default: false
+          description: Si es `true`, limita el listado a videos del usuario autenticado
       responses:
         "200":
           description: Lista paginada de videos de biblioteca
@@ -642,7 +649,9 @@ paths:
                     items:
                       - _id: "67ed8f71cf3e27c5fe0ce245"
                         s3Key: "videoPadelTest.mp4"
+                        sportType: "padel"
                         uploadedAt: "2025-04-02T19:26:41.417Z"
+                        ownerUserId: "67ed8f71cf3e27c5fe0ce246"
                         videoUrl: "https://victory-craft.s3.amazonaws.com/videoPadelTest.mp4?X-Amz-..."
                     pagination:
                       page: 1
@@ -658,6 +667,10 @@ paths:
     post:
       tags: [Videos]
       summary: Crear registro de video para biblioteca (sin cancha)
+      description: >
+        Si la request llega autenticada, el backend asigna `ownerUserId` al video para
+        habilitar flujos de "mis videos" y asociaciones a player profiles. Si no llega
+        autenticada, el comportamiento previo se mantiene y el owner puede quedar vacio.
       requestBody:
         required: true
         content:
@@ -675,6 +688,66 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "500":
           $ref: "#/components/responses/InternalError"
+
+  /videos/library/mine:
+    get:
+      tags: [Videos]
+      summary: Listar solo los videos de biblioteca del usuario autenticado
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: searchTerm
+          schema:
+            type: string
+        - in: query
+          name: sportType
+          schema:
+            type: string
+            enum: [football, padel, tennis, basketball, other]
+      responses:
+        "200":
+          description: Lista paginada de videos propios
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoLibraryPaginatedResponse"
+              examples:
+                mine:
+                  value:
+                    items:
+                      - _id: "67ed8f71cf3e27c5fe0ce245"
+                        s3Key: "my-highlight.mp4"
+                        sportType: "football"
+                        uploadedAt: "2026-03-18T09:00:00.000Z"
+                        ownerUserId: "67ed8f71cf3e27c5fe0ce246"
+                        videoUrl: "https://signed.example.com/my-highlight.mp4"
+                    pagination:
+                      page: 1
+                      limit: 20
+                      total: 1
+                      totalPages: 1
+                      hasNextPage: false
+                      hasPrevPage: false
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /videos/library/{videoId}/scouting-profile:
     post:
@@ -697,6 +770,7 @@ paths:
             examples:
               create:
                 value:
+                  playerProfileId: "67ed8f71cf3e27c5fe0ce248"
                   title: "Highlights U17"
                   sportType: "football"
                   playType: "attacking_transition"
@@ -1115,6 +1189,402 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/VideoRecruiterViewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /recruiters/player-profiles/me:
+    get:
+      tags: [Recruiters]
+      summary: Obtener el player profile del usuario autenticado
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Player profile del usuario autenticado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfile"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /recruiters/player-profiles:
+    post:
+      tags: [Recruiters]
+      summary: Crear un player profile
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerProfileCreateRequest"
+            examples:
+              own:
+                value:
+                  fullName: "Alex Prospect"
+                  sportType: "football"
+                  primaryPosition: "RW"
+                  secondaryPosition: "LW"
+                  team: "Blue FC"
+                  category: "U19"
+                  country: "Spain"
+                  city: "Madrid"
+                  birthDate: "2008-04-11T00:00:00.000Z"
+                  dominantProfile: "right-footed"
+                  bio: "Fast winger with strong 1v1 profile"
+                  avatarUrl: "https://cdn.example.com/players/alex.png"
+                  status: "active"
+              adminForThirdParty:
+                value:
+                  userId: "67ed8f71cf3e27c5fe0ce246"
+                  email: "player@example.com"
+                  fullName: "Player Example"
+                  sportType: "football"
+                  primaryPosition: "ST"
+      responses:
+        "201":
+          description: Player profile creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Usuario objetivo no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Ya existe profile para ese usuario/email
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags: [Recruiters]
+      summary: Buscar player profiles con filtros y paginacion
+      description: >
+        Endpoint pensado para modales reusables. Un `user` normal solo obtiene su propio
+        perfil; `admin` y `recruiter` pueden buscar de forma global.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: email
+          schema:
+            type: string
+        - in: query
+          name: userName
+          schema:
+            type: string
+        - in: query
+          name: fullName
+          schema:
+            type: string
+        - in: query
+          name: team
+          schema:
+            type: string
+        - in: query
+          name: sportType
+          schema:
+            type: string
+        - in: query
+          name: country
+          schema:
+            type: string
+        - in: query
+          name: city
+          schema:
+            type: string
+        - in: query
+          name: category
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [draft, active, archived]
+      responses:
+        "200":
+          description: Player profiles paginados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfilePaginatedResponse"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /recruiters/player-profiles/catalog:
+    get:
+      tags: [Recruiters]
+      summary: Catalogos para formulario y filtros de player profiles
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Catalogos del modulo recruiter/player profiles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfilesCatalogResponse"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /recruiters/player-profiles/{profileId}:
+    get:
+      tags: [Recruiters]
+      summary: Obtener detalle de un player profile
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Player profile encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfile"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso para ver el perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Recruiters]
+      summary: Actualizar un player profile
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerProfileUpdateRequest"
+      responses:
+        "200":
+          description: Player profile actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso para editar el perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Conflicto por userId/email ya existentes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /recruiters/player-profiles/{profileId}/videos:
+    post:
+      tags: [Recruiters]
+      summary: Asociar un video de library a un player profile
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlayerProfileVideoLinkRequest"
+      responses:
+        "201":
+          description: Vinculo creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfileVideoLinkResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso para asociar este video/perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: El video ya esta vinculado a otro profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags: [Recruiters]
+      summary: Listar videos asociados a un player profile
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Videos asociados paginados
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlayerProfileVideoPaginatedResponse"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso para ver este perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /recruiters/player-profiles/{profileId}/videos/{videoId}:
+    delete:
+      tags: [Recruiters]
+      summary: Desasociar un video de un player profile
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: profileId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Video desasociado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  playerProfile:
+                    $ref: "#/components/schemas/PlayerProfileSummary"
+                  video:
+                    $ref: "#/components/schemas/VideoLibraryListItem"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Sin permiso para desasociar
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -3858,6 +4328,9 @@ components:
         sportType:
           type: string
           enum: [football, padel, tennis, basketball, other]
+        ownerUserId:
+          type: string
+          nullable: true
         s3Url:
           type: string
         videoUrl:
@@ -3873,6 +4346,12 @@ components:
         uploadedAt:
           type: string
           format: date-time
+        sportType:
+          type: string
+          nullable: true
+        ownerUserId:
+          type: string
+          nullable: true
         videoUrl:
           type: string
 
@@ -3907,6 +4386,9 @@ components:
       properties:
         _id: { type: string }
         videoId: { type: string }
+        playerProfileId:
+          type: string
+          nullable: true
         title: { type: string }
         sportType: { type: string }
         playType: { type: string }
@@ -3941,6 +4423,7 @@ components:
       type: object
       additionalProperties: false
       properties:
+        playerProfileId: { type: string }
         title: { type: string }
         sportType: { type: string }
         playType: { type: string }
@@ -4035,6 +4518,10 @@ components:
           allOf:
             - $ref: "#/components/schemas/VideoScoutingProfile"
           nullable: true
+        playerProfile:
+          allOf:
+            - $ref: "#/components/schemas/PlayerProfileSummary"
+          nullable: true
         ranking:
           $ref: "#/components/schemas/VideoRankingMetrics"
         myVote:
@@ -4078,6 +4565,10 @@ components:
           allOf:
             - $ref: "#/components/schemas/VideoScoutingProfile"
           nullable: true
+        playerProfile:
+          allOf:
+            - $ref: "#/components/schemas/PlayerProfileSummary"
+          nullable: true
         ranking:
           $ref: "#/components/schemas/VideoVotesSummary"
         relatedVideos:
@@ -4089,6 +4580,171 @@ components:
                 $ref: "#/components/schemas/VideoLibraryListItem"
               scoutingProfile:
                 $ref: "#/components/schemas/VideoScoutingProfile"
+              playerProfile:
+                allOf:
+                  - $ref: "#/components/schemas/PlayerProfileSummary"
+                nullable: true
+
+    PlayerProfileSummary:
+      type: object
+      properties:
+        _id: { type: string }
+        userId:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        fullName: { type: string }
+        sportType: { type: string }
+        primaryPosition: { type: string }
+        secondaryPosition: { type: string }
+        team: { type: string }
+        category: { type: string }
+        country: { type: string }
+        city: { type: string }
+        avatarUrl: { type: string }
+        status: { type: string, enum: [draft, active, archived] }
+
+    PlayerProfile:
+      allOf:
+        - $ref: "#/components/schemas/PlayerProfileSummary"
+        - type: object
+          properties:
+            birthDate:
+              type: string
+              format: date-time
+            dominantProfile: { type: string }
+            bio: { type: string }
+            createdBy:
+              type: string
+              nullable: true
+            updatedBy:
+              type: string
+              nullable: true
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    PlayerProfileCreateRequest:
+      type: object
+      required: [fullName]
+      properties:
+        userId: { type: string }
+        email:
+          type: string
+          format: email
+        fullName: { type: string }
+        sportType: { type: string }
+        primaryPosition: { type: string }
+        secondaryPosition: { type: string }
+        team: { type: string }
+        category: { type: string }
+        country: { type: string }
+        city: { type: string }
+        birthDate:
+          type: string
+          format: date-time
+        dominantProfile: { type: string }
+        bio: { type: string }
+        avatarUrl:
+          type: string
+          format: uri
+        status:
+          type: string
+          enum: [draft, active, archived]
+
+    PlayerProfileUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/PlayerProfileCreateRequest"
+
+    PlayerProfileListItem:
+      allOf:
+        - $ref: "#/components/schemas/PlayerProfileSummary"
+        - type: object
+          properties:
+            userName: { type: string }
+
+    PlayerProfilePaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlayerProfileListItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PlayerProfileVideoLink:
+      type: object
+      properties:
+        _id: { type: string }
+        playerProfileId: { type: string }
+        videoId: { type: string }
+        linkedBy:
+          type: string
+          nullable: true
+        notes: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    PlayerProfileVideoLinkRequest:
+      type: object
+      required: [videoId]
+      properties:
+        videoId: { type: string }
+        notes: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+
+    PlayerProfileVideoLinkResponse:
+      type: object
+      properties:
+        link:
+          $ref: "#/components/schemas/PlayerProfileVideoLink"
+        playerProfile:
+          $ref: "#/components/schemas/PlayerProfileSummary"
+        video:
+          $ref: "#/components/schemas/VideoLibraryListItem"
+
+    PlayerProfileVideoPaginatedResponse:
+      type: object
+      properties:
+        playerProfile:
+          $ref: "#/components/schemas/PlayerProfileSummary"
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              link:
+                $ref: "#/components/schemas/PlayerProfileVideoLink"
+              video:
+                $ref: "#/components/schemas/VideoLibraryListItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    PlayerProfilesCatalogResponse:
+      type: object
+      properties:
+        sportTypes: { type: array, items: { type: string } }
+        positions: { type: array, items: { type: string } }
+        categories: { type: array, items: { type: string } }
+        countries: { type: array, items: { type: string } }
+        cities: { type: array, items: { type: string } }
+        teams: { type: array, items: { type: string } }
+        statuses: { type: array, items: { type: string } }
 
     VideoUpdateRequest:
       type: object

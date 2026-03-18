@@ -63,6 +63,7 @@ export const createLibraryVideo = async (videoData: any) => {
       sportType: videoData.sportType,
       s3Url: videoData.s3Url,
       videoType: "library",
+      ownerUserId: videoData.ownerUserId,
     });
     return updateVideoSignedUrl(video);
   } catch (error: any) {
@@ -80,6 +81,8 @@ export const getLibraryVideosPaginated = async (
   limit = 20,
   searchTerm?: string,
   sportType?: string,
+  mine = false,
+  currentUserId?: string,
 ) => {
   try {
     const safePage = Math.max(1, page);
@@ -93,6 +96,12 @@ export const getLibraryVideosPaginated = async (
 
     if (safeSportType) {
       baseMatch.sportType = safeSportType;
+    }
+    if (mine) {
+      if (!currentUserId || !mongoose.Types.ObjectId.isValid(currentUserId)) {
+        throw new VideoServiceError(401, "unauthorized", "Authentication is required");
+      }
+      baseMatch.ownerUserId = new mongoose.Types.ObjectId(currentUserId);
     }
 
     const matchStage = !safeQuery
@@ -122,7 +131,11 @@ export const getLibraryVideosPaginated = async (
       { $sort: { uploadedAt: -1 } },
       {
         $facet: {
-          items: [{ $skip: skip }, { $limit: safeLimit }, { $project: { _id: 1, s3Key: 1, uploadedAt: 1 } }],
+          items: [
+            { $skip: skip },
+            { $limit: safeLimit },
+            { $project: { _id: 1, s3Key: 1, uploadedAt: 1, sportType: 1, ownerUserId: 1 } },
+          ],
           totalCount: [{ $count: "count" }],
         },
       },
@@ -136,6 +149,8 @@ export const getLibraryVideosPaginated = async (
       s3Key: video.s3Key,
       uploadedAt: video.uploadedAt,
       videoUrl: getObjectS3SignedUrl(video.s3Key),
+      sportType: video.sportType,
+      ownerUserId: video.ownerUserId || null,
     }));
 
     return {
@@ -150,9 +165,20 @@ export const getLibraryVideosPaginated = async (
       },
     };
   } catch (error: any) {
+    if (error instanceof VideoServiceError) {
+      throw error;
+    }
     throw new Error(`Error fetching library videos: ${error.message}`);
   }
 };
+
+export const getMyLibraryVideosPaginated = async (
+  page = 1,
+  limit = 20,
+  searchTerm?: string,
+  sportType?: string,
+  currentUserId?: string,
+) => getLibraryVideosPaginated(page, limit, searchTerm, sportType, true, currentUserId);
 
 export const updateVideo = async (id: string, updateData: any) => {
   try {

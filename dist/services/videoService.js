@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteVideoById = exports.getVideosByField = exports.updateVideo = exports.getLibraryVideosPaginated = exports.createLibraryVideo = exports.createVideo = exports.VideoServiceError = void 0;
+exports.deleteVideoById = exports.getVideosByField = exports.updateVideo = exports.getMyLibraryVideosPaginated = exports.getLibraryVideosPaginated = exports.createLibraryVideo = exports.createVideo = exports.VideoServiceError = void 0;
 const Video_1 = __importDefault(require("../models/Video"));
 const s3FilesService_1 = require("./s3FilesService");
 const s3FilesService_2 = require("./s3FilesService");
@@ -74,6 +74,7 @@ const createLibraryVideo = (videoData) => __awaiter(void 0, void 0, void 0, func
             sportType: videoData.sportType,
             s3Url: videoData.s3Url,
             videoType: "library",
+            ownerUserId: videoData.ownerUserId,
         });
         return updateVideoSignedUrl(video);
     }
@@ -87,7 +88,7 @@ exports.createLibraryVideo = createLibraryVideo;
  * @param page - Pagina actual (base 1).
  * @param limit - Cantidad por pagina.
  */
-const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20, searchTerm, sportType) {
+const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20, searchTerm, sportType, mine = false, currentUserId) {
     var _a, _b, _c, _d;
     try {
         const safePage = Math.max(1, page);
@@ -99,6 +100,12 @@ const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], 
         const safeSportType = (sportType || "").trim().toLowerCase();
         if (safeSportType) {
             baseMatch.sportType = safeSportType;
+        }
+        if (mine) {
+            if (!currentUserId || !mongoose_1.default.Types.ObjectId.isValid(currentUserId)) {
+                throw new VideoServiceError(401, "unauthorized", "Authentication is required");
+            }
+            baseMatch.ownerUserId = new mongoose_1.default.Types.ObjectId(currentUserId);
         }
         const matchStage = !safeQuery
             ? baseMatch
@@ -126,7 +133,11 @@ const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], 
             { $sort: { uploadedAt: -1 } },
             {
                 $facet: {
-                    items: [{ $skip: skip }, { $limit: safeLimit }, { $project: { _id: 1, s3Key: 1, uploadedAt: 1 } }],
+                    items: [
+                        { $skip: skip },
+                        { $limit: safeLimit },
+                        { $project: { _id: 1, s3Key: 1, uploadedAt: 1, sportType: 1, ownerUserId: 1 } },
+                    ],
                     totalCount: [{ $count: "count" }],
                 },
             },
@@ -138,6 +149,8 @@ const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], 
             s3Key: video.s3Key,
             uploadedAt: video.uploadedAt,
             videoUrl: (0, s3FilesService_2.getObjectS3SignedUrl)(video.s3Key),
+            sportType: video.sportType,
+            ownerUserId: video.ownerUserId || null,
         }));
         return {
             items,
@@ -152,10 +165,15 @@ const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], 
         };
     }
     catch (error) {
+        if (error instanceof VideoServiceError) {
+            throw error;
+        }
         throw new Error(`Error fetching library videos: ${error.message}`);
     }
 });
 exports.getLibraryVideosPaginated = getLibraryVideosPaginated;
+const getMyLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], void 0, function* (page = 1, limit = 20, searchTerm, sportType, currentUserId) { return (0, exports.getLibraryVideosPaginated)(page, limit, searchTerm, sportType, true, currentUserId); });
+exports.getMyLibraryVideosPaginated = getMyLibraryVideosPaginated;
 const updateVideo = (id, updateData) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const video = yield Video_1.default.findByIdAndUpdate(id, updateData, { new: true });

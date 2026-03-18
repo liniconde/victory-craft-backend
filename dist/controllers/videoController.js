@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.handleDeleteVideo = exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleGetLibraryVideos = exports.handleCreateLibraryVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
+exports.handleDeleteVideo = exports.handleUploadVideo = exports.handleUpdateVideo = exports.handleGetMyLibraryVideos = exports.handleGetLibraryVideos = exports.handleCreateLibraryVideo = exports.handleCreateVideo = exports.getVideosByFieldController = void 0;
 const videoService_1 = require("../services/videoService");
 const s3FilesService_1 = require("../services/s3FilesService");
 const getVideosByFieldController = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
@@ -58,6 +58,7 @@ exports.handleCreateVideo = handleCreateVideo;
  * Solo requiere `s3Key`, y opcionalmente `sportType` para facilitar analisis.
  */
 const handleCreateLibraryVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
     try {
         const { s3Key, sportType, s3Url, videoUrl } = req.body;
         if (!s3Key) {
@@ -68,6 +69,7 @@ const handleCreateLibraryVideo = (req, res) => __awaiter(void 0, void 0, void 0,
             s3Key,
             sportType,
             s3Url: s3Url || videoUrl,
+            ownerUserId: (_a = req.user) === null || _a === void 0 ? void 0 : _a.id,
         });
         res.status(201).json(video);
     }
@@ -81,27 +83,52 @@ exports.handleCreateLibraryVideo = handleCreateLibraryVideo;
  * Obtiene videos de biblioteca paginados para render de listado.
  */
 const handleGetLibraryVideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b;
+    var _a, _b, _c;
     try {
         const page = Number((_a = req.query.page) !== null && _a !== void 0 ? _a : 1);
         const limit = Number((_b = req.query.limit) !== null && _b !== void 0 ? _b : 20);
         const searchTerm = typeof req.query.searchTerm === "string" ? req.query.searchTerm : undefined;
         const sportType = typeof req.query.sportType === "string" ? req.query.sportType : undefined;
+        const mine = typeof req.query.mine === "string" ? req.query.mine.trim().toLowerCase() === "true" : false;
         if (!Number.isFinite(page) || !Number.isFinite(limit)) {
             res
                 .status(400)
                 .json({ message: "page and limit must be valid numbers" });
             return;
         }
-        const result = yield (0, videoService_1.getLibraryVideosPaginated)(page, limit, searchTerm, sportType);
+        const result = yield (0, videoService_1.getLibraryVideosPaginated)(page, limit, searchTerm, sportType, mine, (_c = req.user) === null || _c === void 0 ? void 0 : _c.id);
         res.status(200).json(result);
     }
     catch (error) {
+        if (error instanceof videoService_1.VideoServiceError) {
+            res.status(error.status).json({ message: error.message, code: error.code });
+            return;
+        }
         console.error("error", error);
         res.status(500).json({ message: error.message });
     }
 });
 exports.handleGetLibraryVideos = handleGetLibraryVideos;
+const handleGetMyLibraryVideos = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    try {
+        const page = Number((_a = req.query.page) !== null && _a !== void 0 ? _a : 1);
+        const limit = Number((_b = req.query.limit) !== null && _b !== void 0 ? _b : 20);
+        const searchTerm = typeof req.query.searchTerm === "string" ? req.query.searchTerm : undefined;
+        const sportType = typeof req.query.sportType === "string" ? req.query.sportType : undefined;
+        const result = yield (0, videoService_1.getMyLibraryVideosPaginated)(page, limit, searchTerm, sportType, (_c = req.user) === null || _c === void 0 ? void 0 : _c.id);
+        res.status(200).json(result);
+    }
+    catch (error) {
+        if (error instanceof videoService_1.VideoServiceError) {
+            res.status(error.status).json({ message: error.message, code: error.code });
+            return;
+        }
+        console.error("error", error);
+        res.status(500).json({ message: error.message });
+    }
+});
+exports.handleGetMyLibraryVideos = handleGetMyLibraryVideos;
 // Actualizar un video
 const handleUpdateVideo = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {

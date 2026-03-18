@@ -4,6 +4,7 @@ import {
   handleCreateLibraryVideo,
   handleDeleteVideo,
   handleGetLibraryVideos,
+  handleGetMyLibraryVideos,
   handleUploadVideo,
   handleUpdateVideo
 } from "../controllers/videoController";
@@ -25,38 +26,17 @@ import {
   handleDeleteVideoAnalysisRecord,
   handleListVideoAnalysisRecords,
 } from "../controllers/videoAnalysisRecordController";
-import {
-  handleCreateVideoScoutingProfile,
-  handleDeleteMyVideoVote,
-  handleDeleteVideoVoteByUser,
-  handleGetTopVideoLibraryRankings,
-  handleGetVideoLibraryFiltersCatalog,
-  handleGetVideoLibraryRankings,
-  handleGetVideoRecruiterView,
-  handleGetVideoScoutingProfile,
-  handleGetVideoVoteSummary,
-  handleUpdateVideoScoutingProfile,
-  handleUpsertVideoVote,
-} from "../controllers/videoScoutingController";
+import { registerRecruitersMsVideoRoutes } from "../recruiters-ms/presentation/videoScoutingRoutes";
 import { optionalAuth, requireAuth } from "../middlewares/authMiddleware";
 
 const router = express.Router();
 
 // 📌 Endpoint para crear un nuevo video
 router.post("/", handleCreateVideo);
-router.post("/library", handleCreateLibraryVideo);
-router.get("/library", handleGetLibraryVideos);
-router.post("/library/:videoId/scouting-profile", requireAuth, handleCreateVideoScoutingProfile);
-router.get("/library/:videoId/scouting-profile", handleGetVideoScoutingProfile);
-router.put("/library/:videoId/scouting-profile", requireAuth, handleUpdateVideoScoutingProfile);
-router.post("/library/:videoId/votes", requireAuth, handleUpsertVideoVote);
-router.delete("/library/:videoId/votes/me", requireAuth, handleDeleteMyVideoVote);
-router.delete("/library/:videoId/votes/:userId", requireAuth, handleDeleteVideoVoteByUser);
-router.get("/library/:videoId/votes/summary", optionalAuth, handleGetVideoVoteSummary);
-router.get("/library/rankings", optionalAuth, handleGetVideoLibraryRankings);
-router.get("/library/rankings/top", optionalAuth, handleGetTopVideoLibraryRankings);
-router.get("/library/filters/catalog", handleGetVideoLibraryFiltersCatalog);
-router.get("/library/:videoId/recruiter-view", optionalAuth, handleGetVideoRecruiterView);
+router.post("/library", optionalAuth, handleCreateLibraryVideo);
+router.get("/library", optionalAuth, handleGetLibraryVideos);
+router.get("/library/mine", requireAuth, handleGetMyLibraryVideos);
+registerRecruitersMsVideoRoutes(router);
 router.put("/:id", handleUpdateVideo);
 router.delete("/:id", handleDeleteVideo);
 router.post("/upload", handleUploadVideo);

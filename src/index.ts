@@ -13,6 +13,7 @@ import videoStatsRoutes from "./routes/videoStatsRoutes";
 import notificationRoutes from "./routes/notificationRoutes";
 import streamingRoutes from "./routes/streamingRoutes";
 import workersControlRoutes from "./routes/workersControlRoutes";
+import recruiterRoutes from "./recruiters-ms/presentation/recruiterRoutes";
 import tournamentDomainRoutes from "./tournaments/routes";
 import agentPlanningRoutes from "./agent-planning/presentation/routes";
 
@@ -107,6 +108,7 @@ app.use("/videos", videoRoutes);
 app.use("/video-stats", videoStatsRoutes);
 app.use("/notifications", notificationRoutes);
 app.use("/workers", workersControlRoutes);
+app.use("/recruiters", recruiterRoutes);
 app.use("/tournaments", tournamentDomainRoutes);
 app.use("/agent", agentPlanningRoutes);
 app.use("/", streamingRoutes);

@@ -6,6 +6,7 @@ interface IVideo extends Document {
   slotId?: mongoose.Types.ObjectId;
   videoType: "field" | "library";
   sportType?: "football" | "padel" | "tennis" | "basketball" | "other";
+  ownerUserId?: mongoose.Types.ObjectId;
   s3Key: string; // Identificador en S3
   s3Url?: string; // URL pública o firmada de S3
   googleAiFileId?: string;
@@ -28,6 +29,7 @@ const VideoSchema = new Schema<IVideo>(
       enum: ["football", "padel", "tennis", "basketball", "other"],
       required: false,
     },
+    ownerUserId: { type: Schema.Types.ObjectId, ref: "User", required: false, index: true },
     s3Key: { type: String, required: true },
     s3Url: { type: String },
     googleAiFileId: { type: String }, // Store Google AI File ID

@@ -3,6 +3,8 @@ require("ts-node/register/transpile-only");
 const test = require("node:test");
 const assert = require("node:assert/strict");
 
+const PlayerProfile = require("../src/models/PlayerProfile").default;
+const PlayerProfileVideoLink = require("../src/models/PlayerProfileVideoLink").default;
 const Video = require("../src/models/Video").default;
 const VideoVote = require("../src/models/VideoVote").default;
 const s3FilesService = require("../src/services/s3FilesService");
@@ -32,9 +34,33 @@ const makeRow = ({
     : null,
 });
 
+const mockNoLinkedPlayerProfiles = () => {
+  const originalPlayerProfileFind = PlayerProfile.find;
+  const originalLinkFind = PlayerProfileVideoLink.find;
+
+  PlayerProfileVideoLink.find = () => ({
+    select() {
+      return this;
+    },
+    lean: async () => [],
+  });
+  PlayerProfile.find = () => ({
+    select() {
+      return this;
+    },
+    lean: async () => [],
+  });
+
+  return () => {
+    PlayerProfile.find = originalPlayerProfileFind;
+    PlayerProfileVideoLink.find = originalLinkFind;
+  };
+};
+
 test("getVideoLibraryRankings con sortBy=score ordena score desc y desempata por uploadedAt desc", async () => {
   const originalAggregate = Video.aggregate;
   const originalSigner = s3FilesService.getObjectS3SignedUrl;
+  const restorePlayerProfiles = mockNoLinkedPlayerProfiles();
 
   Video.aggregate = async () => [
     makeRow({ id: "video-low", uploadedAt: "2026-03-01T00:00:00.000Z", upvotes: 1 }),
@@ -54,11 +80,13 @@ test("getVideoLibraryRankings con sortBy=score ordena score desc y desempata por
   } finally {
     Video.aggregate = originalAggregate;
     s3FilesService.getObjectS3SignedUrl = originalSigner;
+    restorePlayerProfiles();
   }
 });
 
 test("getVideoLibraryRankings pagina despues de aplicar un orden estable", async () => {
   const originalAggregate = Video.aggregate;
+  const restorePlayerProfiles = mockNoLinkedPlayerProfiles();
 
   Video.aggregate = async () => [
     makeRow({ id: "video-c", uploadedAt: "2026-03-03T00:00:00.000Z", upvotes: 2 }),
@@ -77,11 +105,13 @@ test("getVideoLibraryRankings pagina despues de aplicar un orden estable", async
     assert.equal(page2.pagination.hasPrevPage, true);
   } finally {
     Video.aggregate = originalAggregate;
+    restorePlayerProfiles();
   }
 });
 
 test("getVideoLibraryRankings con sortBy=recent mantiene orden por uploadedAt desc", async () => {
   const originalAggregate = Video.aggregate;
+  const restorePlayerProfiles = mockNoLinkedPlayerProfiles();
 
   Video.aggregate = async () => [
     makeRow({ id: "video-old", uploadedAt: "2026-03-01T00:00:00.000Z", upvotes: 100 }),
@@ -97,11 +127,13 @@ test("getVideoLibraryRankings con sortBy=recent mantiene orden por uploadedAt de
     );
   } finally {
     Video.aggregate = originalAggregate;
+    restorePlayerProfiles();
   }
 });
 
 test("getVideoLibraryRankings con sortBy=upvotes mantiene upvotes desc y desempata por uploadedAt desc", async () => {
   const originalAggregate = Video.aggregate;
+  const restorePlayerProfiles = mockNoLinkedPlayerProfiles();
 
   Video.aggregate = async () => [
     makeRow({ id: "video-top", uploadedAt: "2026-03-01T00:00:00.000Z", upvotes: 5 }),
@@ -118,12 +150,14 @@ test("getVideoLibraryRankings con sortBy=upvotes mantiene upvotes desc y desempa
     );
   } finally {
     Video.aggregate = originalAggregate;
+    restorePlayerProfiles();
   }
 });
 
 test("getVideoLibraryRankings usa _id como desempate final para mantener orden deterministico", async () => {
   const originalAggregate = Video.aggregate;
   const originalFind = VideoVote.find;
+  const restorePlayerProfiles = mockNoLinkedPlayerProfiles();
   const videoAId = "67ed8f71cf3e27c5fe0ce241";
   const videoBId = "67ed8f71cf3e27c5fe0ce242";
 
@@ -150,5 +184,6 @@ test("getVideoLibraryRankings usa _id como desempate final para mantener orden d
   } finally {
     Video.aggregate = originalAggregate;
     VideoVote.find = originalFind;
+    restorePlayerProfiles();
   }
 });

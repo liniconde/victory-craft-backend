@@ -4,6 +4,7 @@ import {
   createVideo,
   deleteVideoById,
   getLibraryVideosPaginated,
+  getMyLibraryVideosPaginated,
   updateVideo,
   getVideosByField,
   VideoServiceError,
@@ -73,6 +74,7 @@ export const handleCreateLibraryVideo = async (req: Request, res: Response) => {
       s3Key,
       sportType,
       s3Url: s3Url || videoUrl,
+      ownerUserId: (req as any).user?.id,
     });
     res.status(201).json(video);
   } catch (error: any) {
@@ -91,6 +93,7 @@ export const handleGetLibraryVideos = async (req: Request, res: Response) => {
     const searchTerm =
       typeof req.query.searchTerm === "string" ? req.query.searchTerm : undefined;
     const sportType = typeof req.query.sportType === "string" ? req.query.sportType : undefined;
+    const mine = typeof req.query.mine === "string" ? req.query.mine.trim().toLowerCase() === "true" : false;
 
     if (!Number.isFinite(page) || !Number.isFinite(limit)) {
       res
@@ -99,9 +102,33 @@ export const handleGetLibraryVideos = async (req: Request, res: Response) => {
       return;
     }
 
-    const result = await getLibraryVideosPaginated(page, limit, searchTerm, sportType);
+    const result = await getLibraryVideosPaginated(page, limit, searchTerm, sportType, mine, (req as any).user?.id);
     res.status(200).json(result);
   } catch (error: any) {
+    if (error instanceof VideoServiceError) {
+      res.status(error.status).json({ message: error.message, code: error.code });
+      return;
+    }
+    console.error("error", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export const handleGetMyLibraryVideos = async (req: Request, res: Response) => {
+  try {
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 20);
+    const searchTerm =
+      typeof req.query.searchTerm === "string" ? req.query.searchTerm : undefined;
+    const sportType = typeof req.query.sportType === "string" ? req.query.sportType : undefined;
+
+    const result = await getMyLibraryVideosPaginated(page, limit, searchTerm, sportType, (req as any).user?.id);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error instanceof VideoServiceError) {
+      res.status(error.status).json({ message: error.message, code: error.code });
+      return;
+    }
     console.error("error", error);
     res.status(500).json({ message: error.message });
   }
