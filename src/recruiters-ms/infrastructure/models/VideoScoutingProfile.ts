@@ -3,6 +3,7 @@ import mongoose, { Document, Schema } from "mongoose";
 export interface IVideoScoutingProfile extends Document {
   videoId: mongoose.Types.ObjectId;
   playerProfileId?: mongoose.Types.ObjectId;
+  publicationStatus: "draft" | "published" | "archived";
   title?: string;
   sportType?: string;
   playType?: string;
@@ -30,6 +31,13 @@ const VideoScoutingProfileSchema = new Schema<IVideoScoutingProfile>(
   {
     videoId: { type: Schema.Types.ObjectId, ref: "Video", required: true, unique: true, index: true },
     playerProfileId: { type: Schema.Types.ObjectId, ref: "PlayerProfile", required: false, index: true },
+    publicationStatus: {
+      type: String,
+      enum: ["draft", "published", "archived"],
+      required: true,
+      default: "published",
+      index: true,
+    },
     title: { type: String, trim: true },
     sportType: { type: String, trim: true, index: true },
     playType: { type: String, trim: true, index: true },
@@ -56,6 +64,7 @@ const VideoScoutingProfileSchema = new Schema<IVideoScoutingProfile>(
 VideoScoutingProfileSchema.index({ sportType: 1, playType: 1, tournamentType: 1 });
 VideoScoutingProfileSchema.index({ country: 1, city: 1 });
 VideoScoutingProfileSchema.index({ playerPosition: 1, playerCategory: 1 });
+VideoScoutingProfileSchema.index({ publicationStatus: 1, updatedAt: -1 });
 VideoScoutingProfileSchema.index({ tournamentName: 1 });
 VideoScoutingProfileSchema.index({ tags: 1 });
 

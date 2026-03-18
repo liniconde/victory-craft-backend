@@ -753,6 +753,15 @@ paths:
     post:
       tags: [Videos]
       summary: Crear perfil de scouting para un video de biblioteca
+      description: |
+        Crea la metadata editorial usada para publicar un video en rankings de scouting.
+        El video debe estar previamente vinculado a un `playerProfile` mediante
+        `POST /recruiters/player-profiles/{profileId}/videos`.
+
+        `publicationStatus` controla si el video aparece en ranking:
+        - `published`: visible en ranking
+        - `draft`: borrador no visible en ranking
+        - `archived`: retirado del ranking sin borrar metadata
       security:
         - BearerAuth: []
       parameters:
@@ -771,23 +780,29 @@ paths:
               create:
                 value:
                   playerProfileId: "67ed8f71cf3e27c5fe0ce248"
+                  publicationStatus: "published"
                   title: "Highlights U17"
                   sportType: "football"
                   playType: "attacking_transition"
                   tournamentType: "league"
-                  playerName: "Juan Perez"
                   playerAge: 17
-                  playerPosition: "RW"
-                  playerTeam: "CD Norte"
-                  playerCategory: "U17"
                   jerseyNumber: 11
-                  dominantProfile: "right-footed"
-                  country: "Spain"
-                  city: "Madrid"
                   tournamentName: "Madrid Youth League"
                   notes: "Strong 1v1 profile"
                   tags: ["speed", "duels", "transition"]
                   recordedAt: "2026-03-15T10:00:00.000Z"
+              minimalWithPlayerProfile:
+                value:
+                  playerProfileId: "67ed8f71cf3e27c5fe0ce248"
+                  publicationStatus: "published"
+                  title: "Gol en transición ofensiva"
+                  sportType: "football"
+                  playType: "attacking_transition"
+                  tournamentType: "league"
+                  tournamentName: "Madrid Youth League"
+                  recordedAt: "2026-03-15T10:00:00.000Z"
+                  notes: "Ataque rápido con buena toma de decisión"
+                  tags: ["transition", "finishing"]
       responses:
         "201":
           description: Perfil de scouting creado
@@ -838,6 +853,12 @@ paths:
     put:
       tags: [Videos]
       summary: Actualizar perfil de scouting por video
+      description: |
+        Actualiza la metadata editorial del video publicado en scouting.
+        El video debe seguir vinculado a un `playerProfile` valido.
+
+        También puede cambiar `publicationStatus` para publicar, dejar en borrador o retirar un video del ranking
+        sin borrar su scouting profile.
       security:
         - BearerAuth: []
       parameters:
@@ -1061,11 +1082,6 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
-        - in: query
-          name: includeWithoutProfile
-          schema:
-            type: boolean
-            default: false
       responses:
         "200":
           description: Lista rankeada paginada
@@ -1142,11 +1158,6 @@ paths:
             minimum: 1
             maximum: 50
             default: 10
-        - in: query
-          name: includeWithoutProfile
-          schema:
-            type: boolean
-            default: false
       responses:
         "200":
           description: Top N de videos rankeados
@@ -4389,6 +4400,9 @@ components:
         playerProfileId:
           type: string
           nullable: true
+        publicationStatus:
+          type: string
+          enum: [draft, published, archived]
         title: { type: string }
         sportType: { type: string }
         playType: { type: string }
@@ -4422,21 +4436,35 @@ components:
     VideoScoutingProfileCreateRequest:
       type: object
       additionalProperties: false
+      description: |
+        Request para crear metadata editorial de scouting sobre un video de library.
+        El jugador base se resuelve desde `playerProfile`; este request solo acepta metadata editorial
+        y el estado de publicación.
+
+        `publicationStatus` es opcional y por compatibilidad el backend crea el perfil como `published`
+        si no se envía.
+
+        Para publicar (`published`) el backend exige como mínimo:
+        `playerProfileId`, `title`, `sportType`, `playType`, `tournamentType`, `tournamentName`, `recordedAt`.
+      required:
+        - playerProfileId
+        - title
+        - sportType
+        - playType
+        - tournamentType
+        - tournamentName
+        - recordedAt
       properties:
         playerProfileId: { type: string }
+        publicationStatus:
+          type: string
+          enum: [draft, published, archived]
         title: { type: string }
         sportType: { type: string }
         playType: { type: string }
         tournamentType: { type: string }
-        playerName: { type: string }
         playerAge: { type: integer, minimum: 0, maximum: 100 }
-        playerPosition: { type: string }
-        playerTeam: { type: string }
-        playerCategory: { type: string }
         jerseyNumber: { type: integer, minimum: 0, maximum: 99 }
-        dominantProfile: { type: string }
-        country: { type: string }
-        city: { type: string }
         tournamentName: { type: string }
         notes: { type: string }
         tags:
@@ -4447,6 +4475,10 @@ components:
           format: date-time
 
     VideoScoutingProfileUpdateRequest:
+      description: |
+        Actualización parcial de un scouting profile. Solo acepta metadata editorial, `playerProfileId`
+        y `publicationStatus`. Si el resultado final queda como `published`, el backend valida que
+        el scouting profile conserve todos los mínimos editoriales requeridos.
       allOf:
         - $ref: "#/components/schemas/VideoScoutingProfileCreateRequest"
 
@@ -4511,6 +4543,7 @@ components:
 
     VideoRankingItem:
       type: object
+      description: El ranking público solo incluye videos con scouting profile publicado. Los perfiles en `draft` o `archived` quedan fuera.
       properties:
         video:
           $ref: "#/components/schemas/VideoLibraryListItem"
@@ -4535,6 +4568,8 @@ components:
         Respuesta paginada del ranking. El backend aplica el orden completo antes de paginar para
         evitar inconsistencias entre paginas. En `sortBy=score` se usa `ranking.score DESC`,
         luego `video.uploadedAt DESC` y finalmente un desempate deterministico por id del video.
+        Solo incluye scouting profiles publicados; los videos sin scouting profile y los estados
+        `draft` o `archived` quedan fuera.
       properties:
         items:
           type: array

@@ -187,3 +187,28 @@ test("getVideoLibraryRankings usa _id como desempate final para mantener orden d
     restorePlayerProfiles();
   }
 });
+
+test("getVideoLibraryRankings excluye scouting profiles archivados y videos sin scouting profile", async () => {
+  const originalAggregate = Video.aggregate;
+  const restorePlayerProfiles = mockNoLinkedPlayerProfiles();
+
+  Video.aggregate = async () => [
+    makeRow({ id: "video-published", uploadedAt: "2026-03-03T00:00:00.000Z", upvotes: 2 }),
+    makeRow({
+      id: "video-archived",
+      uploadedAt: "2026-03-04T00:00:00.000Z",
+      upvotes: 9,
+      scoutingProfile: { recordedAt: baseRecordedAt, title: "Archived", publicationStatus: "archived" },
+    }),
+    makeRow({ id: "video-without-profile", uploadedAt: "2026-03-05T00:00:00.000Z", upvotes: 0, scoutingProfile: null }),
+  ];
+
+  try {
+    const normal = await getVideoLibraryRankings({ sortBy: "score", page: 1, limit: 10 });
+
+    assert.deepEqual(normal.items.map((item) => item.video._id), ["video-published"]);
+  } finally {
+    Video.aggregate = originalAggregate;
+    restorePlayerProfiles();
+  }
+});
