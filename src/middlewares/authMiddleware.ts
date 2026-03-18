@@ -41,3 +41,24 @@ export const requireAuth = (req: Request, res: Response, next: NextFunction) => 
     res.status(401).json({ message: "Invalid token", code: "unauthorized" });
   }
 };
+
+export const optionalAuth = (req: Request, _res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization || "";
+    const [scheme, token] = authHeader.split(" ");
+
+    if (scheme !== "Bearer" || !token) {
+      next();
+      return;
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret());
+    const normalizedUser = normalizeUserFromToken(decoded);
+    if (normalizedUser) {
+      (req as any).user = normalizedUser;
+    }
+  } catch (_error) {
+    // Ignore optional auth errors to keep endpoint publicly readable.
+  }
+  next();
+};

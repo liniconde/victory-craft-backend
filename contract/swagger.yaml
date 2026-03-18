@@ -676,6 +676,448 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /videos/library/{videoId}/scouting-profile:
+    post:
+      tags: [Videos]
+      summary: Crear perfil de scouting para un video de biblioteca
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoScoutingProfileCreateRequest"
+            examples:
+              create:
+                value:
+                  title: "Highlights U17"
+                  sportType: "football"
+                  playType: "attacking_transition"
+                  tournamentType: "league"
+                  playerName: "Juan Perez"
+                  playerAge: 17
+                  playerPosition: "RW"
+                  playerTeam: "CD Norte"
+                  playerCategory: "U17"
+                  jerseyNumber: 11
+                  dominantProfile: "right-footed"
+                  country: "Spain"
+                  city: "Madrid"
+                  tournamentName: "Madrid Youth League"
+                  notes: "Strong 1v1 profile"
+                  tags: ["speed", "duels", "transition"]
+                  recordedAt: "2026-03-15T10:00:00.000Z"
+      responses:
+        "201":
+          description: Perfil de scouting creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoScoutingProfileEnvelope"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: No autorizado para crear perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Ya existe perfil para este video
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    get:
+      tags: [Videos]
+      summary: Obtener perfil de scouting por video
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Perfil de scouting encontrado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoScoutingProfileEnvelope"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    put:
+      tags: [Videos]
+      summary: Actualizar perfil de scouting por video
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoScoutingProfileUpdateRequest"
+      responses:
+        "200":
+          description: Perfil de scouting actualizado
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scoutingProfile:
+                    $ref: "#/components/schemas/VideoScoutingProfile"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: No autorizado para actualizar perfil
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /videos/library/{videoId}/votes:
+    post:
+      tags: [Videos]
+      summary: Crear o actualizar voto del usuario autenticado
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoVoteUpsertRequest"
+            examples:
+              upvote:
+                value:
+                  value: 1
+      responses:
+        "200":
+          description: Voto aplicado y resumen actualizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoVoteUpsertResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /videos/library/{videoId}/votes/me:
+    delete:
+      tags: [Videos]
+      summary: Eliminar voto del usuario autenticado
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Voto eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoVoteDeleteResponse"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /videos/library/{videoId}/votes/{userId}:
+    delete:
+      tags: [Videos]
+      summary: Eliminar voto de un usuario (admin/recruiter o mismo usuario)
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Voto eliminado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoVoteDeleteResponse"
+        "401":
+          description: Token requerido
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: No autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /videos/library/{videoId}/votes/summary:
+    get:
+      tags: [Videos]
+      summary: Resumen agregado de votos por video
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Resumen de votos y score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoVotesSummary"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /videos/library/rankings:
+    get:
+      tags: [Videos]
+      summary: Ranking de videos de biblioteca para recruiters
+      description: >
+        Retorna el ranking paginado de videos de biblioteca. El orden se resuelve en backend
+        antes de paginar para mantener resultados estables y consistentes entre paginas.
+      parameters:
+        - in: query
+          name: sportType
+          schema: { type: string }
+        - in: query
+          name: playType
+          schema: { type: string }
+        - in: query
+          name: country
+          schema: { type: string }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: tournamentType
+          schema: { type: string }
+        - in: query
+          name: playerPosition
+          schema: { type: string }
+        - in: query
+          name: playerCategory
+          schema: { type: string }
+        - in: query
+          name: tournamentName
+          schema: { type: string }
+        - in: query
+          name: searchTerm
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          description: >
+            Criterio de orden. `score` ordena por `ranking.score` descendente y desempata por
+            `video.uploadedAt` descendente. `recent` ordena por fecha mas reciente primero.
+            `upvotes` ordena por `ranking.upvotes` descendente y desempata por `video.uploadedAt`
+            descendente.
+          schema:
+            type: string
+            enum: [score, recent, upvotes]
+            default: score
+        - in: query
+          name: page
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - in: query
+          name: includeWithoutProfile
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Lista rankeada paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoRankingPaginatedResponse"
+              examples:
+                paginatedScoreRanking:
+                  summary: Ejemplo paginado con orden estable por score
+                  value:
+                    items:
+                      - video:
+                          _id: 67ed8f71cf3e27c5fe0ce245
+                          s3Key: prospect-a.mp4
+                          sportType: football
+                          uploadedAt: "2026-03-12T14:30:00.000Z"
+                          videoUrl: https://signed.example.com/prospect-a.mp4
+                        scoutingProfile:
+                          _id: 67ed8f71cf3e27c5fe0ce300
+                          videoId: 67ed8f71cf3e27c5fe0ce245
+                          title: Winger highlights
+                          sportType: football
+                          playType: attack
+                          tournamentType: league
+                          playerName: Alex Prospect
+                          playerPosition: winger
+                          playerCategory: U19
+                          country: Spain
+                          city: Madrid
+                          tournamentName: Elite Cup
+                          tags: [speed, one-vs-one]
+                          recordedAt: "2026-03-10T12:00:00.000Z"
+                          createdAt: "2026-03-12T14:31:00.000Z"
+                          updatedAt: "2026-03-12T14:31:00.000Z"
+                        ranking:
+                          score: 42
+                          upvotes: 8
+                          downvotes: 1
+                          netVotes: 7
+                        myVote: 1
+                    pagination:
+                      page: 1
+                      limit: 20
+                      total: 87
+                      totalPages: 5
+                      hasNextPage: true
+                      hasPrevPage: false
+
+  /videos/library/rankings/top:
+    get:
+      tags: [Videos]
+      summary: Top videos rankeados para dashboard recruiter
+      parameters:
+        - in: query
+          name: sportType
+          schema: { type: string }
+        - in: query
+          name: playType
+          schema: { type: string }
+        - in: query
+          name: country
+          schema: { type: string }
+        - in: query
+          name: city
+          schema: { type: string }
+        - in: query
+          name: tournamentType
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
+        - in: query
+          name: includeWithoutProfile
+          schema:
+            type: boolean
+            default: false
+      responses:
+        "200":
+          description: Top N de videos rankeados
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/VideoRankingItem"
+
+  /videos/library/filters/catalog:
+    get:
+      tags: [Videos]
+      summary: Catalogo de filtros de scouting para frontend
+      responses:
+        "200":
+          description: Valores posibles de filtros
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoFiltersCatalogResponse"
+
+  /videos/library/{videoId}/recruiter-view:
+    get:
+      tags: [Videos]
+      summary: Vista agregada recruiter por video
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Detalle unificado de recruiter view
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VideoRecruiterViewResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
   /videos/{id}:
     put:
       tags: [Videos]
@@ -3459,6 +3901,194 @@ components:
             $ref: "#/components/schemas/VideoLibraryListItem"
         pagination:
           $ref: "#/components/schemas/PaginationMeta"
+
+    VideoScoutingProfile:
+      type: object
+      properties:
+        _id: { type: string }
+        videoId: { type: string }
+        title: { type: string }
+        sportType: { type: string }
+        playType: { type: string }
+        tournamentType: { type: string }
+        playerName: { type: string }
+        playerAge: { type: integer }
+        playerPosition: { type: string }
+        playerTeam: { type: string }
+        playerCategory: { type: string }
+        jerseyNumber: { type: integer }
+        dominantProfile: { type: string }
+        country: { type: string }
+        city: { type: string }
+        tournamentName: { type: string }
+        notes: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        recordedAt:
+          type: string
+          format: date-time
+        createdBy: { type: string }
+        updatedBy: { type: string }
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    VideoScoutingProfileCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string }
+        sportType: { type: string }
+        playType: { type: string }
+        tournamentType: { type: string }
+        playerName: { type: string }
+        playerAge: { type: integer, minimum: 0, maximum: 100 }
+        playerPosition: { type: string }
+        playerTeam: { type: string }
+        playerCategory: { type: string }
+        jerseyNumber: { type: integer, minimum: 0, maximum: 99 }
+        dominantProfile: { type: string }
+        country: { type: string }
+        city: { type: string }
+        tournamentName: { type: string }
+        notes: { type: string }
+        tags:
+          type: array
+          items: { type: string }
+        recordedAt:
+          type: string
+          format: date-time
+
+    VideoScoutingProfileUpdateRequest:
+      allOf:
+        - $ref: "#/components/schemas/VideoScoutingProfileCreateRequest"
+
+    VideoScoutingProfileEnvelope:
+      type: object
+      properties:
+        video:
+          $ref: "#/components/schemas/VideoLibraryListItem"
+        scoutingProfile:
+          $ref: "#/components/schemas/VideoScoutingProfile"
+
+    VideoVoteUpsertRequest:
+      type: object
+      required: [value]
+      properties:
+        value:
+          type: integer
+          enum: [-1, 0, 1]
+
+    VideoVotesSummary:
+      type: object
+      properties:
+        videoId: { type: string }
+        upvotes: { type: integer }
+        downvotes: { type: integer }
+        netVotes: { type: integer }
+        score: { type: number }
+        myVote:
+          type: integer
+          enum: [-1, 1]
+          nullable: true
+
+    VideoVoteUpsertResponse:
+      type: object
+      properties:
+        vote:
+          type: object
+          properties:
+            videoId: { type: string }
+            userId: { type: string }
+            value:
+              type: integer
+              enum: [-1, 1]
+              nullable: true
+        summary:
+          $ref: "#/components/schemas/VideoVotesSummary"
+
+    VideoVoteDeleteResponse:
+      type: object
+      properties:
+        message: { type: string }
+        summary:
+          $ref: "#/components/schemas/VideoVotesSummary"
+
+    VideoRankingMetrics:
+      type: object
+      properties:
+        score: { type: number }
+        upvotes: { type: integer }
+        downvotes: { type: integer }
+        netVotes: { type: integer }
+
+    VideoRankingItem:
+      type: object
+      properties:
+        video:
+          $ref: "#/components/schemas/VideoLibraryListItem"
+        scoutingProfile:
+          allOf:
+            - $ref: "#/components/schemas/VideoScoutingProfile"
+          nullable: true
+        ranking:
+          $ref: "#/components/schemas/VideoRankingMetrics"
+        myVote:
+          type: integer
+          enum: [-1, 1]
+          nullable: true
+
+    VideoRankingPaginatedResponse:
+      type: object
+      description: >
+        Respuesta paginada del ranking. El backend aplica el orden completo antes de paginar para
+        evitar inconsistencias entre paginas. En `sortBy=score` se usa `ranking.score DESC`,
+        luego `video.uploadedAt DESC` y finalmente un desempate deterministico por id del video.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VideoRankingItem"
+        pagination:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    VideoFiltersCatalogResponse:
+      type: object
+      properties:
+        sportTypes: { type: array, items: { type: string } }
+        playTypes: { type: array, items: { type: string } }
+        tournamentTypes: { type: array, items: { type: string } }
+        countries: { type: array, items: { type: string } }
+        cities: { type: array, items: { type: string } }
+        playerPositions: { type: array, items: { type: string } }
+        playerCategories: { type: array, items: { type: string } }
+        tournaments: { type: array, items: { type: string } }
+        tags: { type: array, items: { type: string } }
+
+    VideoRecruiterViewResponse:
+      type: object
+      properties:
+        video:
+          $ref: "#/components/schemas/VideoLibraryListItem"
+        scoutingProfile:
+          allOf:
+            - $ref: "#/components/schemas/VideoScoutingProfile"
+          nullable: true
+        ranking:
+          $ref: "#/components/schemas/VideoVotesSummary"
+        relatedVideos:
+          type: array
+          items:
+            type: object
+            properties:
+              video:
+                $ref: "#/components/schemas/VideoLibraryListItem"
+              scoutingProfile:
+                $ref: "#/components/schemas/VideoScoutingProfile"
 
     VideoUpdateRequest:
       type: object

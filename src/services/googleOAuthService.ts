@@ -37,6 +37,20 @@ type GoogleProfile = {
   family_name?: string;
 };
 
+const getGoogleAdminEmails = () =>
+  (process.env.GOOGLE_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+
+const isGoogleAdminEmail = (email?: string | null) =>
+  !!email && getGoogleAdminEmails().includes(email.trim().toLowerCase());
+
+const resolveOAuthRole = (userRole?: string | null, email?: string | null) => {
+  if (isGoogleAdminEmail(email)) return "admin";
+  return userRole || "user";
+};
+
 const getAllowedRedirectUris = () =>
   (process.env.OAUTH_ALLOWED_REDIRECT_URIS || "")
     .split(",")
@@ -278,10 +292,11 @@ export const completeGoogleOAuth = async (params: {
 
   const profile = await fetchGoogleProfile(accessToken);
   const user = await upsertOAuthUser(profile);
+  const effectiveRole = resolveOAuthRole(user.role, user.email);
   const token = signAppToken({
     id: user._id,
     email: user.email,
-    role: user.role,
+    role: effectiveRole,
   });
 
   return {

@@ -31,6 +31,16 @@ class OAuthFlowError extends Error {
     }
 }
 exports.OAuthFlowError = OAuthFlowError;
+const getGoogleAdminEmails = () => (process.env.GOOGLE_ADMIN_EMAILS || "")
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+const isGoogleAdminEmail = (email) => !!email && getGoogleAdminEmails().includes(email.trim().toLowerCase());
+const resolveOAuthRole = (userRole, email) => {
+    if (isGoogleAdminEmail(email))
+        return "admin";
+    return userRole || "user";
+};
 const getAllowedRedirectUris = () => (process.env.OAUTH_ALLOWED_REDIRECT_URIS || "")
     .split(",")
     .map((uri) => uri.trim())
@@ -213,10 +223,11 @@ const completeGoogleOAuth = (params) => __awaiter(void 0, void 0, void 0, functi
     }
     const profile = yield fetchGoogleProfile(accessToken);
     const user = yield upsertOAuthUser(profile);
+    const effectiveRole = resolveOAuthRole(user.role, user.email);
     const token = (0, auth_1.signAppToken)({
         id: user._id,
         email: user.email,
-        role: user.role,
+        role: effectiveRole,
     });
     return {
         redirectUri: state.redirectUri,
