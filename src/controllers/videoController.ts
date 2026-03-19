@@ -27,6 +27,10 @@ export const getVideosByFieldController = async (
     }
     res.status(200).json(videos);
   } catch (error: any) {
+    if (error instanceof VideoServiceError) {
+      res.status(error.status).json({ message: error.message, code: error.code });
+      return;
+    }
     console.error("error", error);
     res.status(500).json({ message: error.message });
   }

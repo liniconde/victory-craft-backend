@@ -2,8 +2,7 @@ import mongoose from "mongoose";
 import VideoStats from "../models/VideoStats";
 import Video from "../models/Video";
 import { getObjectS3SignedUrl } from "./s3FilesService";
-
-type SportType = "football" | "padel" | "tennis" | "basketball" | "other";
+import { normalizeSportType, SPORT_TYPES, SportType } from "../shared/sportTypes";
 type EventType = "pass" | "shot" | "goal" | "foul" | "other";
 type TeamKey = "A" | "B";
 
@@ -68,7 +67,6 @@ export class VideoStatsServiceError extends Error {
   }
 }
 
-const SPORT_TYPES: SportType[] = ["football", "padel", "tennis", "basketball", "other"];
 const EVENT_TYPES: EventType[] = ["pass", "shot", "goal", "foul", "other"];
 const TEAM_KEYS: TeamKey[] = ["A", "B"];
 
@@ -97,7 +95,7 @@ const buildResponse = (stats: any) => {
 const normalizeFromLegacyOrUnified = (payload: UpsertPayload) => {
   const normalized = {
     videoId: payload.videoId,
-    sportType: (payload.sportType || payload.statistics?.sportType) as SportType | undefined,
+    sportType: normalizeSportType(payload.sportType || payload.statistics?.sportType),
     teamAName: safeTrim(payload.teamAName || payload.statistics?.teamAName),
     teamBName: safeTrim(payload.teamBName || payload.statistics?.teamBName),
     events: (payload.events || payload.statistics?.events || []) as ManualEventInput[],

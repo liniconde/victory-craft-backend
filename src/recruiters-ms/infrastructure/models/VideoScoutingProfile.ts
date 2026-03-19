@@ -1,11 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { normalizeSportType, SPORT_TYPES, SportType } from "../../../shared/sportTypes";
 
 export interface IVideoScoutingProfile extends Document {
   videoId: mongoose.Types.ObjectId;
   playerProfileId?: mongoose.Types.ObjectId;
   publicationStatus: "draft" | "published" | "archived";
   title?: string;
-  sportType?: string;
+  sportType?: SportType;
   playType?: string;
   tournamentType?: string;
   playerName?: string;
@@ -39,7 +40,7 @@ const VideoScoutingProfileSchema = new Schema<IVideoScoutingProfile>(
       index: true,
     },
     title: { type: String, trim: true },
-    sportType: { type: String, trim: true, index: true },
+    sportType: { type: String, trim: true, enum: SPORT_TYPES, set: normalizeSportType, index: true },
     playType: { type: String, trim: true, index: true },
     tournamentType: { type: String, trim: true, index: true },
     playerName: { type: String, trim: true, index: true },

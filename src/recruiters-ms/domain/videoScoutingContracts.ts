@@ -1,12 +1,29 @@
 import { z } from "zod";
+import { normalizeSportType, SPORT_TYPES } from "../../shared/sportTypes";
 
 const requiredTrimmedString = z.string().trim().min(1);
 const optionalTrimmedString = requiredTrimmedString.optional();
+const optionalSportType = z.preprocess(
+  (value) => {
+    const normalized = normalizeSportType(value);
+    if (normalized) return normalized;
+    return value;
+  },
+  z.enum(SPORT_TYPES).optional(),
+);
+const requiredSportType = z.preprocess(
+  (value) => {
+    const normalized = normalizeSportType(value);
+    if (normalized) return normalized;
+    return value;
+  },
+  z.enum(SPORT_TYPES),
+);
 
 const scoutingProfileEditorialFieldsSchema = z.object({
   publicationStatus: z.enum(["draft", "published", "archived"]).optional(),
   title: optionalTrimmedString,
-  sportType: optionalTrimmedString,
+  sportType: optionalSportType,
   playType: optionalTrimmedString,
   tournamentType: optionalTrimmedString,
   playerAge: z.number().int().min(0).max(100).optional(),
@@ -20,7 +37,7 @@ const scoutingProfileEditorialFieldsSchema = z.object({
 export const createScoutingProfileSchema = scoutingProfileEditorialFieldsSchema.extend({
   playerProfileId: requiredTrimmedString,
   title: requiredTrimmedString,
-  sportType: requiredTrimmedString,
+  sportType: requiredSportType,
   playType: requiredTrimmedString,
   tournamentType: requiredTrimmedString,
   tournamentName: requiredTrimmedString,
@@ -40,7 +57,7 @@ export const upsertVideoVoteSchema = z.object({
 });
 
 export const rankingsQuerySchema = z.object({
-  sportType: z.string().trim().optional(),
+  sportType: optionalSportType,
   playType: z.string().trim().optional(),
   country: z.string().trim().optional(),
   city: z.string().trim().optional(),
@@ -55,7 +72,7 @@ export const rankingsQuerySchema = z.object({
 });
 
 export const topRankingsQuerySchema = z.object({
-  sportType: z.string().trim().optional(),
+  sportType: optionalSportType,
   playType: z.string().trim().optional(),
   country: z.string().trim().optional(),
   city: z.string().trim().optional(),

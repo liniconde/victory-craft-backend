@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { normalizeSportType, SPORT_TYPES, SportType } from "../shared/sportTypes";
 
 interface TeamStats {
   teamKey?: "A" | "B";
@@ -22,7 +23,7 @@ interface ManualEvent {
 
 interface IVideoStats extends Document {
   videoId: mongoose.Types.ObjectId;
-  sportType: "football" | "padel" | "tennis" | "basketball" | "other";
+  sportType: SportType;
   teamAName?: string;
   teamBName?: string;
   teams: TeamStats[];
@@ -81,7 +82,8 @@ const VideoStatsSchema = new Schema<IVideoStats>(
     },
     sportType: {
       type: String,
-      enum: ["football", "padel", "tennis", "basketball", "other"],
+      enum: SPORT_TYPES,
+      set: normalizeSportType,
       required: true,
     },
     teamAName: { type: String, required: false },

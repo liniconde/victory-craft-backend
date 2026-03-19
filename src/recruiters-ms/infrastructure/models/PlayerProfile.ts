@@ -1,10 +1,11 @@
 import mongoose, { Document, Schema } from "mongoose";
+import { normalizeSportType, SPORT_TYPES, SportType } from "../../../shared/sportTypes";
 
 export interface IPlayerProfile extends Document {
   userId?: mongoose.Types.ObjectId;
   email?: string;
   fullName: string;
-  sportType?: string;
+  sportType?: SportType;
   primaryPosition?: string;
   secondaryPosition?: string;
   team?: string;
@@ -27,7 +28,7 @@ const PlayerProfileSchema = new Schema<IPlayerProfile>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: false, sparse: true, unique: true, index: true },
     email: { type: String, trim: true, lowercase: true, required: false, sparse: true, unique: true, index: true },
     fullName: { type: String, trim: true, required: true, index: true },
-    sportType: { type: String, trim: true, index: true },
+    sportType: { type: String, trim: true, enum: SPORT_TYPES, set: normalizeSportType, index: true },
     primaryPosition: { type: String, trim: true, index: true },
     secondaryPosition: { type: String, trim: true, index: true },
     team: { type: String, trim: true, index: true },

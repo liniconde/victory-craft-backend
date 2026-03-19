@@ -17,6 +17,7 @@ import {
   upsertVideoVoteSchema,
 } from "../domain/videoScoutingContracts";
 import { getObjectS3SignedUrl } from "../../services/s3FilesService";
+import { SPORT_TYPES } from "../../shared/sportTypes";
 
 export class VideoScoutingServiceError extends Error {
   status: number;
@@ -889,7 +890,7 @@ export const getVideoLibraryFiltersCatalog = async () => {
   const values = profileRows[0] || {};
 
   return {
-    sportTypes: sortTextArray(values.sportTypes || []),
+    sportTypes: [...SPORT_TYPES],
     playTypes: sortTextArray(values.playTypes || []),
     tournamentTypes: sortTextArray(values.tournamentTypes || []),
     countries: sortTextArray(values.countries || []),

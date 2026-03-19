@@ -17,6 +17,7 @@ import {
   updatePlayerProfileSchema,
 } from "../domain/playerProfileContracts";
 import { getObjectS3SignedUrl } from "../../services/s3FilesService";
+import { SPORT_TYPES } from "../../shared/sportTypes";
 
 export class PlayerProfileServiceError extends Error {
   status: number;
@@ -523,7 +524,7 @@ export const getPlayerProfilesCatalog = async (_authUser?: AuthUser) => {
     );
 
   return {
-    sportTypes: sortTextArray(values.sportTypes || []),
+    sportTypes: [...SPORT_TYPES],
     positions: sortTextArray([...(values.primaryPositions || []), ...(values.secondaryPositions || [])]),
     categories: sortTextArray(values.categories || []),
     countries: sortTextArray(values.countries || []),

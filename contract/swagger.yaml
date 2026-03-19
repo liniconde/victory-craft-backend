@@ -626,7 +626,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [football, padel, tennis, basketball, other]
+            enum: [football, futsal, basketball, baseball, volleyball, tennis, padel, other]
           description: Filtra por tipo de deporte del video
         - in: query
           name: mine
@@ -671,6 +671,8 @@ paths:
         Si la request llega autenticada, el backend asigna `ownerUserId` al video para
         habilitar flujos de "mis videos" y asociaciones a player profiles. Si no llega
         autenticada, el comportamiento previo se mantiene y el owner puede quedar vacio.
+        `sportType` se normaliza internamente y usa como catalogo oficial:
+        `football`, `futsal`, `basketball`, `baseball`, `volleyball`, `tennis`, `padel`, `other`.
       requestBody:
         required: true
         content:
@@ -717,7 +719,7 @@ paths:
           name: sportType
           schema:
             type: string
-            enum: [football, padel, tennis, basketball, other]
+            enum: [football, futsal, basketball, baseball, volleyball, tennis, padel, other]
       responses:
         "200":
           description: Lista paginada de videos propios
@@ -4286,7 +4288,7 @@ components:
           enum: [field, library]
         sportType:
           type: string
-          enum: [football, padel, tennis, basketball, other]
+          enum: [football, futsal, basketball, baseball, volleyball, tennis, padel, other]
         s3Key:
           type: string
         s3Url:

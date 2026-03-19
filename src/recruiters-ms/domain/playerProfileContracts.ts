@@ -1,12 +1,21 @@
 import { z } from "zod";
+import { normalizeSportType, SPORT_TYPES } from "../../shared/sportTypes";
 
 const optionalTrimmedString = z.string().trim().min(1).optional();
+const optionalSportType = z.preprocess(
+  (value) => {
+    const normalized = normalizeSportType(value);
+    if (normalized) return normalized;
+    return value;
+  },
+  z.enum(SPORT_TYPES).optional(),
+);
 
 export const playerProfileBaseSchema = z.object({
   userId: z.string().trim().optional(),
   email: z.string().trim().email().optional(),
   fullName: z.string().trim().min(1).max(200),
-  sportType: optionalTrimmedString,
+  sportType: optionalSportType,
   primaryPosition: optionalTrimmedString,
   secondaryPosition: optionalTrimmedString,
   team: optionalTrimmedString,
@@ -34,7 +43,7 @@ export const listPlayerProfilesQuerySchema = z.object({
   userName: z.string().trim().optional(),
   fullName: z.string().trim().optional(),
   team: z.string().trim().optional(),
-  sportType: z.string().trim().optional(),
+  sportType: optionalSportType,
   country: z.string().trim().optional(),
   city: z.string().trim().optional(),
   category: z.string().trim().optional(),

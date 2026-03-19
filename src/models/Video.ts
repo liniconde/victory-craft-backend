@@ -1,11 +1,12 @@
 import mongoose, { Schema, Document } from "mongoose";
+import { normalizeSportType, SPORT_TYPES, SportType } from "../shared/sportTypes";
 
 // Interfaz para TypeScript
 interface IVideo extends Document {
   fieldId?: mongoose.Types.ObjectId; // Referencia a Field (opcional para videos de biblioteca)
   slotId?: mongoose.Types.ObjectId;
   videoType: "field" | "library";
-  sportType?: "football" | "padel" | "tennis" | "basketball" | "other";
+  sportType?: SportType;
   ownerUserId?: mongoose.Types.ObjectId;
   s3Key: string; // Identificador en S3
   s3Url?: string; // URL pública o firmada de S3
@@ -26,7 +27,8 @@ const VideoSchema = new Schema<IVideo>(
     },
     sportType: {
       type: String,
-      enum: ["football", "padel", "tennis", "basketball", "other"],
+      enum: SPORT_TYPES,
+      set: normalizeSportType,
       required: false,
     },
     ownerUserId: { type: Schema.Types.ObjectId, ref: "User", required: false, index: true },

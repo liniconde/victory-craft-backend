@@ -9,6 +9,7 @@ import VideoAnalysisRecord from "../models/VideoAnalysisRecord";
 import AnalysisArtifact from "../models/AnalysisArtifact";
 import VideoSegment from "../models/VideoSegment";
 import Notification from "../models/Notification";
+import { normalizeSportTypeOrThrow } from "../shared/sportTypes";
 
 export class VideoServiceError extends Error {
   status: number;
@@ -58,15 +59,22 @@ export const createVideo = async (videoData: any) => {
  */
 export const createLibraryVideo = async (videoData: any) => {
   try {
+    const sportType = normalizeSportTypeOrThrow(
+      videoData.sportType,
+      (message) => new VideoServiceError(400, "invalid_sport_type", message),
+    );
     const video = await Video.create({
       s3Key: videoData.s3Key,
-      sportType: videoData.sportType,
+      sportType,
       s3Url: videoData.s3Url,
       videoType: "library",
       ownerUserId: videoData.ownerUserId,
     });
     return updateVideoSignedUrl(video);
   } catch (error: any) {
+    if (error instanceof VideoServiceError) {
+      throw error;
+    }
     throw new Error(`Error creating video: ${error.message}`);
   }
 };
@@ -92,7 +100,10 @@ export const getLibraryVideosPaginated = async (
     const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const baseMatch: any = { s3Key: { $exists: true, $ne: "" } };
     const safeQuery = (searchTerm || "").trim();
-    const safeSportType = (sportType || "").trim().toLowerCase();
+    const safeSportType = normalizeSportTypeOrThrow(
+      sportType,
+      (message) => new VideoServiceError(400, "invalid_sport_type", message),
+    );
 
     if (safeSportType) {
       baseMatch.sportType = safeSportType;
