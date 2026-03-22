@@ -59,6 +59,9 @@ AGENT_PLANNER_GEMINI_TEMPERATURE=0
 AGENT_PLANNER_TIMEOUT_MS=12000
 ```
 
+Documentacion del planner optimizado:
+- `docs/agent-planner-v2.md`
+
 ### **4️⃣ Ejecutar el backend**
 
 ```bash

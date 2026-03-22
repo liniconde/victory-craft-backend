@@ -25,6 +25,10 @@ const getVideosByFieldController = (req, res) => __awaiter(void 0, void 0, void 
         res.status(200).json(videos);
     }
     catch (error) {
+        if (error instanceof videoService_1.VideoServiceError) {
+            res.status(error.status).json({ message: error.message, code: error.code });
+            return;
+        }
         console.error("error", error);
         res.status(500).json({ message: error.message });
     }

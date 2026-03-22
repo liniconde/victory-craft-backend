@@ -21,6 +21,7 @@ const User_1 = __importDefault(require("../../models/User"));
 const Video_1 = __importDefault(require("../../models/Video"));
 const playerProfileContracts_1 = require("../domain/playerProfileContracts");
 const s3FilesService_1 = require("../../services/s3FilesService");
+const sportTypes_1 = require("../../shared/sportTypes");
 class PlayerProfileServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -454,7 +455,7 @@ const getPlayerProfilesCatalog = (_authUser) => __awaiter(void 0, void 0, void 0
     const values = rows[0] || {};
     const sortTextArray = (items) => [...new Set(items.filter((item) => Boolean(item && item.trim())).map((item) => item.trim()))].sort((a, b) => a.localeCompare(b));
     return {
-        sportTypes: sortTextArray(values.sportTypes || []),
+        sportTypes: [...sportTypes_1.SPORT_TYPES],
         positions: sortTextArray([...(values.primaryPositions || []), ...(values.secondaryPositions || [])]),
         categories: sortTextArray(values.categories || []),
         countries: sortTextArray(values.countries || []),

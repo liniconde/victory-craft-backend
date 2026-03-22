@@ -34,11 +34,19 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const sportTypes_1 = require("../../../shared/sportTypes");
 const VideoScoutingProfileSchema = new mongoose_1.Schema({
     videoId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Video", required: true, unique: true, index: true },
     playerProfileId: { type: mongoose_1.Schema.Types.ObjectId, ref: "PlayerProfile", required: false, index: true },
+    publicationStatus: {
+        type: String,
+        enum: ["draft", "published", "archived"],
+        required: true,
+        default: "published",
+        index: true,
+    },
     title: { type: String, trim: true },
-    sportType: { type: String, trim: true, index: true },
+    sportType: { type: String, trim: true, enum: sportTypes_1.SPORT_TYPES, set: sportTypes_1.normalizeSportType, index: true },
     playType: { type: String, trim: true, index: true },
     tournamentType: { type: String, trim: true, index: true },
     playerName: { type: String, trim: true, index: true },
@@ -60,6 +68,7 @@ const VideoScoutingProfileSchema = new mongoose_1.Schema({
 VideoScoutingProfileSchema.index({ sportType: 1, playType: 1, tournamentType: 1 });
 VideoScoutingProfileSchema.index({ country: 1, city: 1 });
 VideoScoutingProfileSchema.index({ playerPosition: 1, playerCategory: 1 });
+VideoScoutingProfileSchema.index({ publicationStatus: 1, updatedAt: -1 });
 VideoScoutingProfileSchema.index({ tournamentName: 1 });
 VideoScoutingProfileSchema.index({ tags: 1 });
 exports.default = mongoose_1.default.model("VideoScoutingProfile", VideoScoutingProfileSchema, "video_scouting_profiles");

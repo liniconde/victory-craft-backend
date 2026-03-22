@@ -20,7 +20,7 @@ const streamingRoutes_1 = __importDefault(require("./routes/streamingRoutes"));
 const workersControlRoutes_1 = __importDefault(require("./routes/workersControlRoutes"));
 const recruiterRoutes_1 = __importDefault(require("./recruiters-ms/presentation/recruiterRoutes"));
 const routes_1 = __importDefault(require("./tournaments/routes"));
-const routes_2 = __importDefault(require("./agent-planning/presentation/routes"));
+const agentRoutes_1 = __importDefault(require("./agents-ms/presentation/agentRoutes"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const port = process.env.PORT || 5001;
@@ -102,7 +102,7 @@ app.use("/notifications", notificationRoutes_1.default);
 app.use("/workers", workersControlRoutes_1.default);
 app.use("/recruiters", recruiterRoutes_1.default);
 app.use("/tournaments", routes_1.default);
-app.use("/agent", routes_2.default);
+app.use("/agent", agentRoutes_1.default);
 app.use("/", streamingRoutes_1.default);
 // Export app for Vercel
 exports.default = app;

@@ -3378,6 +3378,152 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /agent/v2/plan:
+    post:
+      tags: [Agent Planning]
+      summary: Planificar acciones frontend con catalogo de navegacion, cache y fallback LLM
+      description: >
+        Version optimizada del planner. Intenta resolver navegacion frecuente de forma
+        deterministica usando un catalogo compacto enviado por frontend o previamente
+        sincronizado. Solo llama al LLM cuando hay ambiguedad real. La respuesta incluye
+        metadata de cache, confianza y trazabilidad.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentPlanV2Request"
+      responses:
+        "200":
+          description: Plan de acciones optimizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPlanV2Response"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "502":
+          description: Error del proveedor LLM
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /agent/v2/navigation-catalogs/{version}:
+    put:
+      tags: [Agent Planning]
+      summary: Registrar o actualizar un catalogo de navegacion
+      description: >
+        Guarda el catalogo de navegacion compacto generado por frontend para una version
+        concreta. Al actualizar una version, el backend invalida automaticamente la cache
+        asociada a esa version para evitar rutas antiguas.
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: version
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NavigationCatalogUpsertRequest"
+      responses:
+        "200":
+          description: Catalogo guardado e invalidacion aplicada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NavigationCatalogUpsertResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Rol no autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /agent/v2/cache/invalidate:
+    post:
+      tags: [Agent Planning]
+      summary: Invalidar cache global del planner v2
+      description: >
+        Permite borrar toda la cache, solo una version de catalogo o una pregunta concreta
+        ya normalizada por el backend.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentPlanCacheInvalidateRequest"
+      responses:
+        "200":
+          description: Cache invalidada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPlanCacheInvalidateResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Rol no autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /agent/v2/cache/refresh:
+    post:
+      tags: [Agent Planning]
+      summary: Regenerar entradas de cache del planner v2
+      description: >
+        Permite precalentar cache para prompts frecuentes. Cada request puede incluir el
+        catalogo completo o reutilizar uno ya sincronizado por version. Opcionalmente se
+        puede invalidar primero la cache de esas versiones.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AgentPlanCacheRefreshRequest"
+      responses:
+        "200":
+          description: Cache regenerada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgentPlanCacheRefreshResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          description: Rol no autorizado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Error del proveedor LLM durante el refresh
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /concerts/{id}:
     get:
       tags: [Concerts]
@@ -3587,6 +3733,226 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AgentPlanCall"
+
+    NavigationCatalogEntry:
+      type: object
+      required: [route, actionName, title]
+      properties:
+        route:
+          type: string
+        actionName:
+          type: string
+          example: navigation.go_to
+        title:
+          type: string
+        section:
+          type: string
+        page:
+          type: string
+        subpage:
+          type: string
+        aliases:
+          type: array
+          items:
+            type: string
+        breadcrumbs:
+          type: array
+          items:
+            type: string
+        parents:
+          type: array
+          items:
+            type: string
+        intentTags:
+          type: array
+          items:
+            type: string
+        isLanding:
+          type: boolean
+        popularity:
+          type: number
+
+    NavigationCatalog:
+      type: object
+      required: [version, entries]
+      properties:
+        version:
+          type: string
+        locale:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/NavigationCatalogEntry"
+
+    AgentPlanMetaCandidateRoute:
+      type: object
+      required: [route, score]
+      properties:
+        route:
+          type: string
+        score:
+          type: number
+          minimum: 0
+          maximum: 1
+
+    AgentPlanMeta:
+      type: object
+      required: [plannerMode, confidence, traceId]
+      properties:
+        plannerMode:
+          type: string
+          enum: [deterministic, llm, llm_repaired, fallback, cache_hit]
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        selectedRoute:
+          type: string
+        navigationCatalogVersion:
+          type: string
+        traceId:
+          type: string
+        cacheKey:
+          type: string
+        cacheHit:
+          type: boolean
+        candidateRoutes:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPlanMetaCandidateRoute"
+        validationWarnings:
+          type: array
+          items:
+            type: string
+
+    AgentPlanV2Request:
+      type: object
+      required: [prompt, currentPath, actions, navigationCatalogVersion]
+      properties:
+        prompt:
+          type: string
+        currentPath:
+          type: string
+        locale:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentAction"
+        navigationCatalogVersion:
+          type: string
+        navigationCatalog:
+          $ref: "#/components/schemas/NavigationCatalog"
+
+    AgentPlanV2Response:
+      type: object
+      required: [summary, calls, meta]
+      properties:
+        summary:
+          type: string
+        calls:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPlanCall"
+        meta:
+          $ref: "#/components/schemas/AgentPlanMeta"
+
+    NavigationCatalogUpsertRequest:
+      type: object
+      required: [navigationCatalog]
+      properties:
+        navigationCatalog:
+          $ref: "#/components/schemas/NavigationCatalog"
+
+    NavigationCatalogUpsertResponse:
+      type: object
+      required: [message, version, entries, invalidatedCount]
+      properties:
+        message:
+          type: string
+        version:
+          type: string
+        entries:
+          type: integer
+        invalidatedCount:
+          type: integer
+
+    AgentPlanCacheInvalidateRequest:
+      type: object
+      properties:
+        all:
+          type: boolean
+        catalogVersion:
+          type: string
+        prompt:
+          type: string
+      description: Al menos uno de `all`, `catalogVersion` o `prompt` es obligatorio.
+
+    AgentPlanCacheInvalidateResponse:
+      type: object
+      required: [message, deletedCount]
+      properties:
+        message:
+          type: string
+        deletedCount:
+          type: integer
+
+    AgentPlanCacheRefreshItem:
+      type: object
+      required: [prompt, currentPath, actions, navigationCatalogVersion]
+      properties:
+        prompt:
+          type: string
+        currentPath:
+          type: string
+        locale:
+          type: string
+        actions:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentAction"
+        navigationCatalogVersion:
+          type: string
+        navigationCatalog:
+          $ref: "#/components/schemas/NavigationCatalog"
+
+    AgentPlanCacheRefreshRequest:
+      type: object
+      required: [requests]
+      properties:
+        invalidateFirst:
+          type: boolean
+        requests:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/AgentPlanCacheRefreshItem"
+
+    AgentPlanCacheRefreshResult:
+      type: object
+      required: [prompt, summary, plannerMode]
+      properties:
+        prompt:
+          type: string
+        summary:
+          type: string
+        plannerMode:
+          type: string
+
+    AgentPlanCacheRefreshResponse:
+      type: object
+      required: [message, invalidatedCount, results]
+      properties:
+        message:
+          type: string
+        invalidatedCount:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentPlanCacheRefreshResult"
 
     User:
       type: object

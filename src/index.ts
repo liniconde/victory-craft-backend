@@ -15,7 +15,7 @@ import streamingRoutes from "./routes/streamingRoutes";
 import workersControlRoutes from "./routes/workersControlRoutes";
 import recruiterRoutes from "./recruiters-ms/presentation/recruiterRoutes";
 import tournamentDomainRoutes from "./tournaments/routes";
-import agentPlanningRoutes from "./agent-planning/presentation/routes";
+import agentRoutes from "./agents-ms/presentation/agentRoutes";
 
 dotenv.config();
 
@@ -110,7 +110,7 @@ app.use("/notifications", notificationRoutes);
 app.use("/workers", workersControlRoutes);
 app.use("/recruiters", recruiterRoutes);
 app.use("/tournaments", tournamentDomainRoutes);
-app.use("/agent", agentPlanningRoutes);
+app.use("/agent", agentRoutes);
 app.use("/", streamingRoutes);
 
 // Export app for Vercel

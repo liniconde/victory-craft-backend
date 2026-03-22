@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const sportTypes_1 = require("../shared/sportTypes");
 const MatchMetricSchema = new mongoose_1.Schema({
     total: { type: Number, default: 0, required: true },
     teamA: { type: Number, default: 0, required: true },
@@ -59,7 +60,8 @@ const VideoStatsSchema = new mongoose_1.Schema({
     },
     sportType: {
         type: String,
-        enum: ["football", "padel", "tennis", "basketball", "other"],
+        enum: sportTypes_1.SPORT_TYPES,
+        set: sportTypes_1.normalizeSportType,
         required: true,
     },
     teamAName: { type: String, required: false },

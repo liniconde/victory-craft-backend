@@ -24,6 +24,7 @@ const VideoAnalysisRecord_1 = __importDefault(require("../models/VideoAnalysisRe
 const AnalysisArtifact_1 = __importDefault(require("../models/AnalysisArtifact"));
 const VideoSegment_1 = __importDefault(require("../models/VideoSegment"));
 const Notification_1 = __importDefault(require("../models/Notification"));
+const sportTypes_1 = require("../shared/sportTypes");
 class VideoServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -69,9 +70,10 @@ exports.createVideo = createVideo;
  */
 const createLibraryVideo = (videoData) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const sportType = (0, sportTypes_1.normalizeSportTypeOrThrow)(videoData.sportType, (message) => new VideoServiceError(400, "invalid_sport_type", message));
         const video = yield Video_1.default.create({
             s3Key: videoData.s3Key,
-            sportType: videoData.sportType,
+            sportType,
             s3Url: videoData.s3Url,
             videoType: "library",
             ownerUserId: videoData.ownerUserId,
@@ -79,6 +81,9 @@ const createLibraryVideo = (videoData) => __awaiter(void 0, void 0, void 0, func
         return updateVideoSignedUrl(video);
     }
     catch (error) {
+        if (error instanceof VideoServiceError) {
+            throw error;
+        }
         throw new Error(`Error creating video: ${error.message}`);
     }
 });
@@ -97,7 +102,7 @@ const getLibraryVideosPaginated = (...args_1) => __awaiter(void 0, [...args_1], 
         const escapeRegex = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const baseMatch = { s3Key: { $exists: true, $ne: "" } };
         const safeQuery = (searchTerm || "").trim();
-        const safeSportType = (sportType || "").trim().toLowerCase();
+        const safeSportType = (0, sportTypes_1.normalizeSportTypeOrThrow)(sportType, (message) => new VideoServiceError(400, "invalid_sport_type", message));
         if (safeSportType) {
             baseMatch.sportType = safeSportType;
         }

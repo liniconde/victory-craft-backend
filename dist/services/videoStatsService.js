@@ -17,6 +17,7 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const VideoStats_1 = __importDefault(require("../models/VideoStats"));
 const Video_1 = __importDefault(require("../models/Video"));
 const s3FilesService_1 = require("./s3FilesService");
+const sportTypes_1 = require("../shared/sportTypes");
 class VideoStatsServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -25,12 +26,11 @@ class VideoStatsServiceError extends Error {
     }
 }
 exports.VideoStatsServiceError = VideoStatsServiceError;
-const SPORT_TYPES = ["football", "padel", "tennis", "basketball", "other"];
 const EVENT_TYPES = ["pass", "shot", "goal", "foul", "other"];
 const TEAM_KEYS = ["A", "B"];
 const emptyMetric = () => ({ total: 0, teamA: 0, teamB: 0 });
 const safeTrim = (value) => (typeof value === "string" ? value.trim() : "");
-const isValidSportType = (value) => SPORT_TYPES.includes(value);
+const isValidSportType = (value) => sportTypes_1.SPORT_TYPES.includes(value);
 const buildResponse = (stats) => {
     const result = (stats === null || stats === void 0 ? void 0 : stats.toObject) ? stats.toObject() : stats;
     return Object.assign(Object.assign({}, result), { statistics: {
@@ -47,7 +47,7 @@ const normalizeFromLegacyOrUnified = (payload) => {
     var _a, _b, _c, _d, _e, _f, _g;
     const normalized = {
         videoId: payload.videoId,
-        sportType: (payload.sportType || ((_a = payload.statistics) === null || _a === void 0 ? void 0 : _a.sportType)),
+        sportType: (0, sportTypes_1.normalizeSportType)(payload.sportType || ((_a = payload.statistics) === null || _a === void 0 ? void 0 : _a.sportType)),
         teamAName: safeTrim(payload.teamAName || ((_b = payload.statistics) === null || _b === void 0 ? void 0 : _b.teamAName)),
         teamBName: safeTrim(payload.teamBName || ((_c = payload.statistics) === null || _c === void 0 ? void 0 : _c.teamBName)),
         events: (payload.events || ((_d = payload.statistics) === null || _d === void 0 ? void 0 : _d.events) || []),

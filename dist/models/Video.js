@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const sportTypes_1 = require("../shared/sportTypes");
 // Esquema de Mongoose
 const VideoSchema = new mongoose_1.Schema({
     fieldId: { type: mongoose_1.Schema.Types.ObjectId, ref: "Field", required: false },
@@ -46,7 +47,8 @@ const VideoSchema = new mongoose_1.Schema({
     },
     sportType: {
         type: String,
-        enum: ["football", "padel", "tennis", "basketball", "other"],
+        enum: sportTypes_1.SPORT_TYPES,
+        set: sportTypes_1.normalizeSportType,
         required: false,
     },
     ownerUserId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: false, index: true },

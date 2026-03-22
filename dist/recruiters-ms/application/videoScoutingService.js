@@ -21,6 +21,7 @@ const Video_1 = __importDefault(require("../../models/Video"));
 const VideoVote_1 = __importDefault(require("../../models/VideoVote"));
 const videoScoutingContracts_1 = require("../domain/videoScoutingContracts");
 const s3FilesService_1 = require("../../services/s3FilesService");
+const sportTypes_1 = require("../../shared/sportTypes");
 class VideoScoutingServiceError extends Error {
     constructor(status, code, message) {
         super(message);
@@ -53,6 +54,93 @@ const normalizeScoutingPayload = (payload) => {
     }
     return data;
 };
+const playerProfileHydratedFieldMap = {
+    playerName: "fullName",
+    playerPosition: "primaryPosition",
+    playerTeam: "team",
+    playerCategory: "category",
+    dominantProfile: "dominantProfile",
+    country: "country",
+    city: "city",
+};
+const getPlayerProfileForScouting = (playerProfileId) => __awaiter(void 0, void 0, void 0, function* () {
+    const objectId = toObjectId(playerProfileId, "playerProfileId");
+    const profile = yield PlayerProfile_1.default.findById(objectId)
+        .select({
+        _id: 1,
+        userId: 1,
+        fullName: 1,
+        primaryPosition: 1,
+        team: 1,
+        category: 1,
+        dominantProfile: 1,
+        country: 1,
+        city: 1,
+    })
+        .lean();
+    if (!profile) {
+        throw new VideoScoutingServiceError(404, "player_profile_not_found", "Player profile not found");
+    }
+    return profile;
+});
+const hydrateScoutingPayloadFromPlayerProfile = (payload, playerProfileId) => __awaiter(void 0, void 0, void 0, function* () {
+    const data = normalizeScoutingPayload(payload);
+    data.playerProfileId = playerProfileId;
+    const playerProfile = yield getPlayerProfileForScouting(playerProfileId);
+    for (const [targetField, sourceField] of Object.entries(playerProfileHydratedFieldMap)) {
+        const currentValue = data[targetField];
+        const hasValue = Array.isArray(currentValue)
+            ? currentValue.length > 0
+            : currentValue !== null && currentValue !== undefined && String(currentValue).trim() !== "";
+        if (!hasValue) {
+            const profileValue = playerProfile[sourceField];
+            if (profileValue !== null && profileValue !== undefined && String(profileValue).trim() !== "") {
+                data[targetField] = profileValue;
+            }
+        }
+    }
+    return data;
+});
+const getLinkedPlayerProfileForVideo = (videoId, playerProfileId) => __awaiter(void 0, void 0, void 0, function* () {
+    const playerProfileObjectId = toObjectId(playerProfileId, "playerProfileId");
+    const link = yield PlayerProfileVideoLink_1.default.findOne({
+        videoId,
+        playerProfileId: playerProfileObjectId,
+    })
+        .select({ _id: 1, playerProfileId: 1, videoId: 1 })
+        .lean();
+    if (!link) {
+        throw new VideoScoutingServiceError(409, "player_profile_video_not_linked", "Video must be linked to the selected player profile before it can be published");
+    }
+    return playerProfileId;
+});
+const getExistingScoutingProfileOrThrow = (videoObjectId) => __awaiter(void 0, void 0, void 0, function* () {
+    const profile = yield VideoScoutingProfile_1.default.findOne({ videoId: videoObjectId }).lean();
+    if (!profile) {
+        throw new VideoScoutingServiceError(404, "scouting_profile_not_found", "Scouting profile not found");
+    }
+    return profile;
+});
+const editorialPublishRequiredFields = [
+    "playerProfileId",
+    "title",
+    "sportType",
+    "playType",
+    "tournamentType",
+    "tournamentName",
+    "recordedAt",
+];
+const ensurePublishedProfileHasMinimumEditorialData = (payload) => {
+    const missingFields = editorialPublishRequiredFields.filter((field) => {
+        const value = payload[field];
+        if (Array.isArray(value))
+            return value.length === 0;
+        return value === null || value === undefined || String(value).trim() === "";
+    });
+    if (missingFields.length > 0) {
+        throw new VideoScoutingServiceError(400, "incomplete_published_scouting_profile", `Published scouting profiles require: ${missingFields.join(", ")}`);
+    }
+};
 const ensureLibraryVideoExists = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
     const objectId = toObjectId(videoId, "videoId");
     const video = yield Video_1.default.findOne({ _id: objectId, videoType: "library" }).lean();
@@ -69,6 +157,20 @@ const roleCanManageScouting = (role) => {
     const normalized = (role || "").toLowerCase();
     return normalized === "admin" || normalized === "recruiter";
 };
+const ensureScoutingOwnership = (video, playerProfileId, authUser) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!(authUser === null || authUser === void 0 ? void 0 : authUser.id)) {
+        throw new VideoScoutingServiceError(401, "unauthorized", "Authentication is required");
+    }
+    if (roleCanManageScouting(authUser.role)) {
+        return;
+    }
+    const playerProfile = yield getPlayerProfileForScouting(playerProfileId);
+    const ownsVideo = String(video.ownerUserId || "") === authUser.id;
+    const ownsProfile = String(playerProfile.userId || "") === authUser.id;
+    if (!ownsVideo || !ownsProfile) {
+        throw new VideoScoutingServiceError(403, "forbidden", "Users can only manage scouting profiles for their own linked videos and player profile");
+    }
+});
 const getVoteSummary = (videoId) => __awaiter(void 0, void 0, void 0, function* () {
     var _a, _b;
     const rows = yield VideoVote_1.default.aggregate([
@@ -153,6 +255,7 @@ const mapScoutingProfile = (profile) => {
         _id: profile._id,
         videoId: profile.videoId,
         playerProfileId: profile.playerProfileId || null,
+        publicationStatus: profile.publicationStatus || "published",
         title: profile.title,
         sportType: profile.sportType,
         playType: profile.playType,
@@ -248,7 +351,14 @@ const createVideoScoutingProfile = (videoId, payload, authUser) => __awaiter(voi
         throw new VideoScoutingServiceError(409, "scouting_profile_already_exists", "Scouting profile already exists for this video");
     }
     const createdBy = (authUser === null || authUser === void 0 ? void 0 : authUser.id) && isObjectId(authUser.id) ? new mongoose_1.default.Types.ObjectId(authUser.id) : undefined;
-    const created = yield VideoScoutingProfile_1.default.create(Object.assign(Object.assign({ videoId: videoObjectId }, normalizeScoutingPayload(parsed)), { createdBy, updatedBy: createdBy }));
+    const linkedPlayerProfileId = yield getLinkedPlayerProfileForVideo(videoObjectId, parsed.playerProfileId);
+    yield ensureScoutingOwnership(video, linkedPlayerProfileId, authUser);
+    const createData = yield hydrateScoutingPayloadFromPlayerProfile(parsed, linkedPlayerProfileId);
+    const publicationStatus = createData.publicationStatus || "published";
+    if (publicationStatus === "published") {
+        ensurePublishedProfileHasMinimumEditorialData(createData);
+    }
+    const created = yield VideoScoutingProfile_1.default.create(Object.assign(Object.assign({ videoId: videoObjectId, publicationStatus }, createData), { createdBy, updatedBy: createdBy }));
     return {
         video: toVideoSummary(video),
         scoutingProfile: mapScoutingProfile(created.toObject()),
@@ -272,19 +382,30 @@ const updateVideoScoutingProfile = (videoId, payload, authUser) => __awaiter(voi
         throw new VideoScoutingServiceError(403, "forbidden", "Insufficient permissions to update scouting profile");
     }
     const parsed = parseZod(videoScoutingContracts_1.updateScoutingProfileSchema.safeParse(payload), "invalid_scouting_profile_payload");
-    yield ensureLibraryVideoExists(videoId);
+    const video = yield ensureLibraryVideoExists(videoId);
     const videoObjectId = toObjectId(videoId, "videoId");
-    const updateData = normalizeScoutingPayload(parsed);
+    const existingProfile = yield getExistingScoutingProfileOrThrow(videoObjectId);
+    const effectivePlayerProfileId = parsed.playerProfileId || String(existingProfile.playerProfileId || "");
+    if (!effectivePlayerProfileId) {
+        throw new VideoScoutingServiceError(409, "scouting_profile_missing_player_profile", "Scouting profile must be associated with a player profile");
+    }
+    const linkedPlayerProfileId = yield getLinkedPlayerProfileForVideo(videoObjectId, effectivePlayerProfileId);
+    yield ensureScoutingOwnership(video, linkedPlayerProfileId, authUser);
+    const updateData = yield hydrateScoutingPayloadFromPlayerProfile(parsed, linkedPlayerProfileId);
     const updatedBy = (authUser === null || authUser === void 0 ? void 0 : authUser.id) && isObjectId(authUser.id) ? new mongoose_1.default.Types.ObjectId(authUser.id) : undefined;
     if (updatedBy) {
         updateData.updatedBy = updatedBy;
     }
-    const updated = yield VideoScoutingProfile_1.default.findOneAndUpdate({ videoId: videoObjectId }, { $set: updateData }, { new: true }).lean();
-    if (!updated) {
-        throw new VideoScoutingServiceError(404, "scouting_profile_not_found", "Scouting profile not found");
+    const nextPublicationStatus = (updateData.publicationStatus ||
+        existingProfile.publicationStatus ||
+        "published");
+    const nextProfileState = Object.assign(Object.assign(Object.assign({}, existingProfile), updateData), { publicationStatus: nextPublicationStatus, playerProfileId: linkedPlayerProfileId });
+    if (nextPublicationStatus === "published") {
+        ensurePublishedProfileHasMinimumEditorialData(nextProfileState);
     }
+    const updated = yield VideoScoutingProfile_1.default.findOneAndUpdate({ videoId: videoObjectId }, { $set: updateData }, { new: true }).lean();
     return {
-        scoutingProfile: mapScoutingProfile(updated),
+        scoutingProfile: mapScoutingProfile(updated || nextProfileState),
     };
 });
 exports.updateVideoScoutingProfile = updateVideoScoutingProfile;
@@ -394,9 +515,12 @@ const buildRankingFilterStages = (query) => {
     if (searchFilters) {
         matchStages.push({ $match: searchFilters });
     }
-    if (!query.includeWithoutProfile) {
-        matchStages.push({ $match: { scoutingProfile: { $ne: null } } });
-    }
+    matchStages.push({
+        $match: {
+            scoutingProfile: { $ne: null },
+            "scoutingProfile.publicationStatus": { $in: [null, "published"] },
+        },
+    });
     return matchStages;
 };
 const aggregateRankingsCandidates = (query) => __awaiter(void 0, void 0, void 0, function* () {
@@ -484,6 +608,12 @@ const mapRankingItem = (row, playerProfile) => {
         },
     };
 };
+const isPublishedScoutingProfile = (profile) => {
+    if (!profile)
+        return false;
+    return !profile.publicationStatus || profile.publicationStatus === "published";
+};
+const shouldIncludeRankingRow = (row) => Boolean(row.scoutingProfile && isPublishedScoutingProfile(row.scoutingProfile));
 const getVideoUploadedAtTimestamp = (item) => { var _a; return new Date(((_a = item === null || item === void 0 ? void 0 : item.video) === null || _a === void 0 ? void 0 : _a.uploadedAt) || 0).getTime(); };
 const compareRankingItemsByRecent = (a, b) => {
     var _a, _b;
@@ -510,8 +640,9 @@ const compareRankingItems = (sortBy, a, b) => {
 const getVideoLibraryRankings = (query, currentUserId) => __awaiter(void 0, void 0, void 0, function* () {
     const parsed = parseZod(videoScoutingContracts_1.rankingsQuerySchema.safeParse(query), "invalid_rankings_query");
     const rows = yield aggregateRankingsCandidates(parsed);
-    const playerProfileByVideoId = yield getPlayerProfileByVideoIdMap(rows.map((row) => String(row._id)));
-    const mapped = rows.map((row) => mapRankingItem(row, playerProfileByVideoId.get(String(row._id))));
+    const visibleRows = rows.filter((row) => shouldIncludeRankingRow(row));
+    const playerProfileByVideoId = yield getPlayerProfileByVideoIdMap(visibleRows.map((row) => String(row._id)));
+    const mapped = visibleRows.map((row) => mapRankingItem(row, playerProfileByVideoId.get(String(row._id))));
     mapped.sort((a, b) => compareRankingItems(parsed.sortBy, a, b));
     const page = parsed.page;
     const limit = parsed.limit;
@@ -546,8 +677,9 @@ exports.getVideoLibraryRankings = getVideoLibraryRankings;
 const getTopVideoLibraryRankings = (query, currentUserId) => __awaiter(void 0, void 0, void 0, function* () {
     const parsed = parseZod(videoScoutingContracts_1.topRankingsQuerySchema.safeParse(query), "invalid_top_rankings_query");
     const rows = yield aggregateRankingsCandidates(parsed);
-    const playerProfileByVideoId = yield getPlayerProfileByVideoIdMap(rows.map((row) => String(row._id)));
-    const top = rows
+    const visibleRows = rows.filter((row) => shouldIncludeRankingRow(row));
+    const playerProfileByVideoId = yield getPlayerProfileByVideoIdMap(visibleRows.map((row) => String(row._id)));
+    const top = visibleRows
         .map((row) => mapRankingItem(row, playerProfileByVideoId.get(String(row._id))))
         .sort((a, b) => b.ranking.score - a.ranking.score)
         .slice(0, parsed.limit);
@@ -590,7 +722,7 @@ const getVideoLibraryFiltersCatalog = () => __awaiter(void 0, void 0, void 0, fu
     ]);
     const values = profileRows[0] || {};
     return {
-        sportTypes: sortTextArray(values.sportTypes || []),
+        sportTypes: [...sportTypes_1.SPORT_TYPES],
         playTypes: sortTextArray(values.playTypes || []),
         tournamentTypes: sortTextArray(values.tournamentTypes || []),
         countries: sortTextArray(values.countries || []),

@@ -2,12 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.listLinkedVideosQuerySchema = exports.linkPlayerProfileVideoSchema = exports.listPlayerProfilesQuerySchema = exports.updatePlayerProfileSchema = exports.createPlayerProfileSchema = exports.playerProfileBaseSchema = void 0;
 const zod_1 = require("zod");
+const sportTypes_1 = require("../../shared/sportTypes");
 const optionalTrimmedString = zod_1.z.string().trim().min(1).optional();
+const optionalSportType = zod_1.z.preprocess((value) => {
+    const normalized = (0, sportTypes_1.normalizeSportType)(value);
+    if (normalized)
+        return normalized;
+    return value;
+}, zod_1.z.enum(sportTypes_1.SPORT_TYPES).optional());
 exports.playerProfileBaseSchema = zod_1.z.object({
     userId: zod_1.z.string().trim().optional(),
     email: zod_1.z.string().trim().email().optional(),
     fullName: zod_1.z.string().trim().min(1).max(200),
-    sportType: optionalTrimmedString,
+    sportType: optionalSportType,
     primaryPosition: optionalTrimmedString,
     secondaryPosition: optionalTrimmedString,
     team: optionalTrimmedString,
@@ -29,7 +36,7 @@ exports.listPlayerProfilesQuerySchema = zod_1.z.object({
     userName: zod_1.z.string().trim().optional(),
     fullName: zod_1.z.string().trim().optional(),
     team: zod_1.z.string().trim().optional(),
-    sportType: zod_1.z.string().trim().optional(),
+    sportType: optionalSportType,
     country: zod_1.z.string().trim().optional(),
     city: zod_1.z.string().trim().optional(),
     category: zod_1.z.string().trim().optional(),

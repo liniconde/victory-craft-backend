@@ -11,7 +11,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handleDeleteUser = exports.handleUpdateUser = exports.handleLoginUser = exports.handleRegisterUser = exports.handleGetUserById = exports.handleGetUsers = void 0;
 const userService_1 = require("../services/userService");
-const utils_1 = require("../utils/utils");
 // Obtener todos los usuarios
 const handleGetUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -51,26 +50,10 @@ exports.handleRegisterUser = handleRegisterUser;
 // Iniciar sesión
 const handleLoginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        if ((0, utils_1.isDevMode)()) {
-            res.json({
-                user: {
-                    email: "js.ve@gmail.com",
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    username: "string",
-                    password: "string",
-                    firstName: "string",
-                    lastName: "string",
-                    role: "admin",
-                    profileImage: "string",
-                },
-                token: "agsdhjkldf",
-            });
-            return;
-        }
         const { email, password } = req.body;
         if (!email || !password) {
             res.status(400).json({ message: "Email and password are required" });
+            return;
         }
         const { user, token } = yield (0, userService_1.loginUser)(email, password);
         res.json({ user, token });

@@ -34,11 +34,12 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const sportTypes_1 = require("../../../shared/sportTypes");
 const PlayerProfileSchema = new mongoose_1.Schema({
     userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: false, sparse: true, unique: true, index: true },
     email: { type: String, trim: true, lowercase: true, required: false, sparse: true, unique: true, index: true },
     fullName: { type: String, trim: true, required: true, index: true },
-    sportType: { type: String, trim: true, index: true },
+    sportType: { type: String, trim: true, enum: sportTypes_1.SPORT_TYPES, set: sportTypes_1.normalizeSportType, index: true },
     primaryPosition: { type: String, trim: true, index: true },
     secondaryPosition: { type: String, trim: true, index: true },
     team: { type: String, trim: true, index: true },
